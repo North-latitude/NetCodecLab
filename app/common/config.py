@@ -10,7 +10,7 @@ from __future__ import annotations
 BITS_PER_BYTE = 8
 
 # 默认字符集：编码工坊与纠错演示都以 UTF-8 为准，GBK 作为对比项
-DEFAULT_ENCODING = "utf-8"
+DEFAULT_ENCODING = "gbk"  # 中文演示优先，两字节更省
 
 # 一次最多处理的字符数，防止把界面卡死
 MAX_INPUT_CHARS = 200
