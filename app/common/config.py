@@ -9,8 +9,10 @@ from __future__ import annotations
 # 每个字节固定 8 位
 BITS_PER_BYTE = 8
 
-# 默认字符集：编码工坊与纠错演示都以 UTF-8 为准，GBK 作为对比项
-DEFAULT_ENCODING = "gbk"  # 中文演示优先，两字节更省
+# 默认字符集：统一用 UTF-8。
+# 冲突演练结论（见 docs/git-conflict.md）：GBK 编不了 emoji，会让整个页面解析失败，
+# 所以默认值保留 UTF-8；GBK 仍可通过编码工坊的字符集下拉框手动切换做对比演示。
+DEFAULT_ENCODING = "utf-8"
 
 # 一次最多处理的字符数，防止把界面卡死
 MAX_INPUT_CHARS = 200
