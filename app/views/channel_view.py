@@ -18,10 +18,12 @@ from app.common.theme import (
     COLOR_ERROR,
     COLOR_PASS,
     COLOR_PRIMARY,
-    FONT_BOLD,
     FONT_FAMILY,
-    FONT_NORMAL,
 )
+
+# 演示字号比公共主题大 1 磅，便于课堂投影查看。
+FONT_NORMAL = (FONT_FAMILY, 11)
+FONT_BOLD = (FONT_FAMILY, 11, "bold")
 from app.core import checksum, crc, hamming, matrix, parity
 
 
@@ -107,7 +109,7 @@ class ChannelView(tk.Frame):
             bg="#F5F7FB",
             fg="#1E293B",
             insertbackground="#059669",
-            font=("Consolas", 11),
+            font=("Consolas", 12),
             relief="solid",
             bd=1,
         )
@@ -151,7 +153,7 @@ class ChannelView(tk.Frame):
             text="输入 1～16 位二进制数据，将同时生成五种发送帧",
             bg="#FFFFFF",
             fg="#64748B",
-            font=(FONT_FAMILY, 9),
+            font=(FONT_FAMILY, 10),
             anchor="w",
         )
         self.status_label.pack(fill="x", padx=18, pady=(0, 10))
@@ -184,11 +186,11 @@ class ChannelView(tk.Frame):
         header.pack(fill="x", padx=16, pady=(11, 6))
         tk.Label(
             header, text="信道位串", bg="#FFFFFF", fg="#172033",
-            font=(FONT_FAMILY, 11, "bold"),
+            font=(FONT_FAMILY, 12, "bold"),
         ).pack(side="left")
         tk.Label(
             header, text="点击任意 bit 翻转", bg="#FFFFFF", fg="#94A3B8",
-            font=(FONT_FAMILY, 8),
+            font=(FONT_FAMILY, 9),
         ).pack(side="left", padx=(10, 0))
         self.scheme_box = ttk.Combobox(
             header,
@@ -205,11 +207,11 @@ class ChannelView(tk.Frame):
         sent.pack(fill="x", padx=16)
         tk.Label(
             sent, text="发送帧", bg="#FFFFFF", fg="#8491A5",
-            font=(FONT_FAMILY, 8, "bold"),
+            font=(FONT_FAMILY, 9, "bold"),
         ).pack(side="left")
         self.sent_label = tk.Label(
             sent, text="—", bg="#FFFFFF", fg="#475569",
-            font=("Consolas", 9), anchor="w",
+            font=("Consolas", 10), anchor="w",
         )
         self.sent_label.pack(side="left", padx=(12, 0))
 
@@ -224,17 +226,17 @@ class ChannelView(tk.Frame):
         footer = tk.Frame(card, bg="#FFFFFF")
         footer.pack(fill="x", padx=16, pady=(0, 10))
         tk.Label(
-            footer, text="■", fg=COLOR_ERROR, bg="#FFFFFF", font=(FONT_FAMILY, 8),
+            footer, text="■", fg=COLOR_ERROR, bg="#FFFFFF", font=(FONT_FAMILY, 9),
         ).pack(side="left")
         tk.Label(
-            footer, text="已翻转", fg="#718096", bg="#FFFFFF", font=(FONT_FAMILY, 8),
+            footer, text="已翻转", fg="#718096", bg="#FFFFFF", font=(FONT_FAMILY, 9),
         ).pack(side="left", padx=(3, 12))
         tk.Label(
-            footer, text="□", fg=COLOR_PRIMARY, bg="#FFFFFF", font=(FONT_FAMILY, 8),
+            footer, text="□", fg=COLOR_PRIMARY, bg="#FFFFFF", font=(FONT_FAMILY, 9),
         ).pack(side="left")
         tk.Label(
             footer, text="蓝框为校验位 · 下方数字为 bit 序号",
-            fg="#718096", bg="#FFFFFF", font=(FONT_FAMILY, 8),
+            fg="#718096", bg="#FFFFFF", font=(FONT_FAMILY, 9),
         ).pack(side="left", padx=(3, 0))
 
     def _build_process_cards(self, parent):
@@ -262,21 +264,21 @@ class ChannelView(tk.Frame):
             badge.create_oval(1, 1, 23, 23, fill=colors[index], outline="")
             badge.create_text(
                 12, 12, text=f"{index + 1:02d}", fill="#FFFFFF",
-                font=("Segoe UI", 7, "bold"),
+                font=("Segoe UI", 8, "bold"),
             )
             title = tk.Label(
                 header, text=titles[index], bg="#FFFFFF", fg="#263248",
-                font=(FONT_FAMILY, 9, "bold"),
+                font=(FONT_FAMILY, 10, "bold"),
             )
             title.pack(side="left", padx=(6, 0))
             value = tk.Label(
                 card, text="—", bg="#F8FAFC", fg=colors[index],
-                font=("Consolas", 10, "bold"), anchor="w", padx=7, pady=3,
+                font=("Consolas", 11, "bold"), anchor="w", padx=7, pady=3,
             )
             value.pack(fill="x", padx=10, pady=(0, 5))
             description = tk.Label(
                 card, text="等待数据", bg="#FFFFFF", fg="#718096",
-                font=(FONT_FAMILY, 8), justify="left", anchor="nw", wraplength=150,
+                font=(FONT_FAMILY, 9), justify="left", anchor="nw", wraplength=150,
             )
             description.pack(fill="both", expand=True, padx=10, pady=(0, 9))
             card.bind(
@@ -300,11 +302,11 @@ class ChannelView(tk.Frame):
         header.pack(fill="x", padx=16, pady=(10, 4))
         tk.Label(
             header, text="接收端判定", bg="#FFFFFF", fg="#64748B",
-            font=(FONT_FAMILY, 9, "bold"),
+            font=(FONT_FAMILY, 10, "bold"),
         ).pack(side="left")
         tk.Label(
             header, text="RECEIVER VERDICT", bg="#FFFFFF", fg="#A0AEC0",
-            font=("Segoe UI", 7, "bold"),
+            font=("Segoe UI", 8, "bold"),
         ).pack(side="right")
 
         status_row = tk.Frame(card, bg="#FFFFFF")
@@ -315,12 +317,12 @@ class ChannelView(tk.Frame):
         self.verdict_icon.pack(side="left")
         self.verdict_status = tk.Label(
             status_row, text="等待发送帧", bg="#FFFFFF", fg="#64748B",
-            font=(FONT_FAMILY, 14, "bold"),
+            font=(FONT_FAMILY, 15, "bold"),
         )
         self.verdict_status.pack(side="left", padx=(10, 0))
         self.verdict_detail = tk.Label(
             card, text="生成五种发送帧后显示判定。", bg="#FFFFFF", fg="#64748B",
-            font=(FONT_FAMILY, 8), justify="left", anchor="nw", wraplength=280,
+            font=(FONT_FAMILY, 9), justify="left", anchor="nw", wraplength=280,
         )
         self.verdict_detail.pack(fill="x", padx=16, pady=(6, 6))
         card.bind(
@@ -344,17 +346,17 @@ class ChannelView(tk.Frame):
             )
             tk.Label(
                 metric, text=title, bg="#F8FAFC", fg="#8491A5",
-                font=(FONT_FAMILY, 7, "bold"),
+                font=(FONT_FAMILY, 8, "bold"),
             ).pack(pady=(4, 0))
             value = tk.Label(
                 metric, text="—", bg="#F8FAFC", fg="#334155",
-                font=("Consolas", 11, "bold"),
+                font=("Consolas", 12, "bold"),
             )
             value.pack(pady=(0, 4))
             self.metric_values.append(value)
         self.recovered_label = tk.Label(
             card, text="", bg="#FFFFFF", fg="#334155",
-            font=("Consolas", 8, "bold"), justify="left", anchor="nw",
+            font=("Consolas", 9, "bold"), justify="left", anchor="nw",
             wraplength=280,
         )
         self.recovered_label.pack(fill="x", padx=16, pady=(0, 10))
@@ -369,11 +371,11 @@ class ChannelView(tk.Frame):
         header.pack(fill="x", padx=14, pady=(10, 7))
         tk.Label(
             header, text="五种方案对比", bg="#FFFFFF", fg="#172033",
-            font=(FONT_FAMILY, 10, "bold"),
+            font=(FONT_FAMILY, 11, "bold"),
         ).pack(side="left")
         tk.Label(
             header, text="点击行切换位串", bg="#FFFFFF", fg="#94A3B8",
-            font=(FONT_FAMILY, 8),
+            font=(FONT_FAMILY, 9),
         ).pack(side="right")
 
         style = ttk.Style(self)
@@ -383,16 +385,16 @@ class ChannelView(tk.Frame):
             background="#FFFFFF",
             fieldbackground="#FFFFFF",
             foreground="#334155",
-            rowheight=29,
+            rowheight=32,
             borderwidth=0,
-            font=(FONT_FAMILY, 8),
+            font=(FONT_FAMILY, 9),
         )
         style.configure(
             "Channel.Treeview.Heading",
             background="#EEF2F7",
             foreground="#64748B",
             relief="flat",
-            font=(FONT_FAMILY, 8, "bold"),
+            font=(FONT_FAMILY, 9, "bold"),
         )
         style.map(
             "Channel.Treeview",
@@ -425,7 +427,7 @@ class ChannelView(tk.Frame):
         tk.Label(
             card,
             text="各方案按相同相对位置注入错误；帧结构不同，帧长也不同。",
-            bg="#FFFFFF", fg="#94A3B8", font=(FONT_FAMILY, 7),
+            bg="#FFFFFF", fg="#94A3B8", font=(FONT_FAMILY, 8),
             anchor="w", justify="left", wraplength=300,
         ).pack(fill="x", padx=14, pady=(6, 9))
 
@@ -712,12 +714,12 @@ class ChannelView(tk.Frame):
             )
             canvas.create_text(
                 x1 + size / 2, y1 + size / 2 + 1, text=bit,
-                fill=foreground, font=("Consolas", 11, "bold"),
+                fill=foreground, font=("Consolas", 12, "bold"),
             )
             canvas.create_text(
                 x1 + size / 2, y1 + size + 10, text=str(position),
                 fill=COLOR_ERROR if flipped else "#94A3B8",
-                font=("Consolas", 7),
+                font=("Consolas", 8),
             )
 
     def _draw_hero(self, event):
@@ -736,11 +738,11 @@ class ChannelView(tk.Frame):
         canvas.create_oval(width - 190, 34, width - 40, 184, fill="#116457", outline="")
         canvas.create_text(
             32, 29, text="信道模拟", fill="#FFFFFF", anchor="w",
-            font=(FONT_FAMILY, 21, "bold"),
+            font=(FONT_FAMILY, 22, "bold"),
         )
         canvas.create_text(
             34, 60, text="CHANNEL SIMULATOR  /  BIT ERROR INJECTION",
-            fill="#D1FAE5", anchor="w", font=("Segoe UI", 9, "bold"),
+            fill="#D1FAE5", anchor="w", font=("Segoe UI", 10, "bold"),
         )
         canvas.create_text(
             34, 89,
@@ -749,11 +751,11 @@ class ChannelView(tk.Frame):
         )
         canvas.create_text(
             width - 38, 49, text="01 → 0", fill="#D1FAE5", anchor="e",
-            font=("Consolas", 17, "bold"),
+            font=("Consolas", 18, "bold"),
         )
         canvas.create_text(
             width - 38, 80, text="SEND  /  FLIP  /  VERIFY",
-            fill="#A7F3D0", anchor="e", font=("Segoe UI", 8, "bold"),
+            fill="#A7F3D0", anchor="e", font=("Segoe UI", 9, "bold"),
         )
 
     def _draw_verdict_icon(self, color, symbol):
@@ -761,7 +763,7 @@ class ChannelView(tk.Frame):
         self.verdict_icon.create_oval(2, 2, 44, 44, fill=color, outline="")
         self.verdict_icon.create_text(
             23, 22, text=symbol, fill="#FFFFFF",
-            font=("Segoe UI Symbol", 18, "bold"),
+            font=("Segoe UI Symbol", 19, "bold"),
         )
 
     def _on_scheme_selected(self, event):

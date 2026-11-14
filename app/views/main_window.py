@@ -1,6 +1,7 @@
 """主窗口：把编码、校验、信道三个实验页面组合为一个应用。"""
 
 import tkinter as tk
+import tkinter.font as tkfont
 
 from app.common.theme import COLOR_BACKGROUND, FONT_FAMILY
 from app.views.channel_view import ChannelView
@@ -17,6 +18,17 @@ def _rounded_rectangle(canvas, x1, y1, x2, y2, radius=13, **kwargs):
     return canvas.create_polygon(points, smooth=True, splinesteps=36, **kwargs)
 
 
+def _enlarge_default_fonts(delta=1):
+    """放大下拉菜单等使用 Tk 默认字体的控件。"""
+    for name in ("TkDefaultFont", "TkTextFont", "TkFixedFont", "TkMenuFont", "TkHeadingFont"):
+        try:
+            font = tkfont.nametofont(name)
+            size = font.cget("size")
+            font.configure(size=size + delta if size > 0 else size - delta)
+        except tk.TclError:
+            pass
+
+
 class MainWindow(tk.Tk):
     """左侧导航 + 右侧页面，三个实验页面堆叠后按需置顶。"""
 
@@ -28,6 +40,7 @@ class MainWindow(tk.Tk):
 
     def __init__(self):
         super().__init__()
+        _enlarge_default_fonts()
 
         self.title("NetCodecLab · 网络编码可视化实验室")
         self.geometry("1360x880")
@@ -56,23 +69,23 @@ class MainWindow(tk.Tk):
         logo.pack(side="left")
         _rounded_rectangle(logo, 2, 2, 46, 46, fill="#6366F1", outline="")
         logo.create_text(
-            24, 24, text="N", fill="#FFFFFF", font=("Segoe UI", 20, "bold"),
+            24, 24, text="N", fill="#FFFFFF", font=("Segoe UI", 21, "bold"),
         )
 
         brand_text = tk.Frame(brand, bg="#111827")
         brand_text.pack(side="left", padx=(12, 0), pady=3)
         tk.Label(
             brand_text, text="NetCodecLab", bg="#111827", fg="#FFFFFF",
-            font=("Segoe UI", 14, "bold"),
+            font=("Segoe UI", 15, "bold"),
         ).pack(anchor="w")
         tk.Label(
             brand_text, text="NETWORK CODEC LAB", bg="#111827", fg="#64748B",
-            font=("Segoe UI", 8, "bold"),
+            font=("Segoe UI", 9, "bold"),
         ).pack(anchor="w", pady=(3, 0))
 
         tk.Label(
             sidebar, text="实验模块", bg="#111827", fg="#64748B",
-            font=(FONT_FAMILY, 10), anchor="w",
+            font=(FONT_FAMILY, 11), anchor="w",
         ).pack(fill="x", padx=28, pady=(0, 10))
 
         for key, title, index, _, color, _ in self.PAGES:
@@ -88,7 +101,7 @@ class MainWindow(tk.Tk):
                 bd=0,
                 highlightthickness=0,
                 cursor="hand2",
-                font=(FONT_FAMILY, 12, "bold"),
+                font=(FONT_FAMILY, 13, "bold"),
                 anchor="w",
                 padx=22,
                 pady=16,
@@ -107,7 +120,7 @@ class MainWindow(tk.Tk):
         dot.create_oval(2, 2, 10, 10, fill="#34D399", outline="")
         tk.Label(
             status, text="系统已就绪", bg="#192236", fg="#CBD5E1",
-            font=(FONT_FAMILY, 10),
+            font=(FONT_FAMILY, 11),
         ).pack(side="left")
 
     def _build_pages(self):

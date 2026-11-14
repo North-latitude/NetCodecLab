@@ -17,10 +17,12 @@ from app.common.theme import (
     COLOR_ERROR,
     COLOR_PASS,
     COLOR_PRIMARY,
-    FONT_BOLD,
     FONT_FAMILY,
-    FONT_NORMAL,
 )
+
+# 演示字号比公共主题大 1 磅，便于课堂投影查看。
+FONT_NORMAL = (FONT_FAMILY, 11)
+FONT_BOLD = (FONT_FAMILY, 11, "bold")
 
 
 def _mix_colors(start, end, ratio):
@@ -100,7 +102,7 @@ class EncodingView(tk.Frame):
             bg="#F5F7FB",
             fg="#1E293B",
             insertbackground=COLOR_PRIMARY,
-            font=(FONT_FAMILY, 11),
+            font=(FONT_FAMILY, 12),
             relief="solid",
             bd=1,
         )
@@ -153,7 +155,7 @@ class EncodingView(tk.Frame):
             text="输入字符后点击解析",
             bg="#FFFFFF",
             fg="#64748B",
-            font=(FONT_FAMILY, 9),
+            font=(FONT_FAMILY, 10),
             anchor="w",
         )
         self.status_label.pack(fill="x", padx=18, pady=(0, 10))
@@ -169,14 +171,14 @@ class EncodingView(tk.Frame):
             text="字符编码探索",
             bg=COLOR_BACKGROUND,
             fg="#172033",
-            font=(FONT_FAMILY, 12, "bold"),
+            font=(FONT_FAMILY, 13, "bold"),
         ).pack(side="left")
         tk.Label(
             header,
             text="点击字符卡片，观察编码细节",
             bg=COLOR_BACKGROUND,
             fg="#7B8BA1",
-            font=(FONT_FAMILY, 9),
+            font=(FONT_FAMILY, 10),
         ).pack(side="right")
 
         body = tk.Frame(
@@ -265,14 +267,14 @@ class EncodingView(tk.Frame):
             text=f"CHAR {index + 1:02d}",
             bg="#FFFFFF",
             fg="#94A3B8",
-            font=("Segoe UI", 8, "bold"),
+            font=("Segoe UI", 9, "bold"),
         ).pack(side="left")
         tk.Label(
             header,
             text="Unicode",
             bg="#FFFFFF",
             fg="#94A3B8",
-            font=(FONT_FAMILY, 8),
+            font=(FONT_FAMILY, 9),
         ).pack(side="right")
 
         char_label = tk.Label(
@@ -280,7 +282,7 @@ class EncodingView(tk.Frame):
             text=self._display_char(record["char"]),
             bg="#FFFFFF",
             fg="#263248",
-            font=(FONT_FAMILY, 25, "bold"),
+            font=(FONT_FAMILY, 26, "bold"),
         )
         char_label.pack(pady=(2, 0))
         tk.Label(
@@ -288,7 +290,7 @@ class EncodingView(tk.Frame):
             text=f"U+{record['codepoint']:04X}",
             bg="#FFFFFF",
             fg=COLOR_PRIMARY,
-            font=("Consolas", 10, "bold"),
+            font=("Consolas", 11, "bold"),
         ).pack()
         tk.Frame(surface, bg="#E2E8F0", height=1).pack(
             fill="x", padx=13, pady=7,
@@ -302,14 +304,14 @@ class EncodingView(tk.Frame):
                 text=title,
                 bg="#FFFFFF",
                 fg="#8491A5",
-                font=("Segoe UI", 8, "bold"),
+                font=("Segoe UI", 9, "bold"),
             ).pack(side="left")
             tk.Label(
                 row,
                 text=self._hex_bytes(record[key]),
                 bg="#FFFFFF",
                 fg="#334155",
-                font=("Consolas", 9, "bold"),
+                font=("Consolas", 10, "bold"),
             ).pack(side="right")
 
         selected_bytes = record[self._selected_encoding_key()]
@@ -319,7 +321,7 @@ class EncodingView(tk.Frame):
             text=f"位流  ·  {bit_count} BIT" if selected_bytes is not None else "位流不可用",
             bg="#FFFFFF",
             fg="#8491A5",
-            font=(FONT_FAMILY, 8),
+            font=(FONT_FAMILY, 9),
         ).pack(anchor="w", padx=12, pady=(7, 2))
 
         bits_canvas = tk.Canvas(
@@ -349,7 +351,7 @@ class EncodingView(tk.Frame):
         else:
             bits_canvas.create_text(
                 70, 10, text="NOT SUPPORTED", fill=COLOR_ERROR,
-                font=("Segoe UI", 8, "bold"),
+                font=("Segoe UI", 9, "bold"),
             )
 
         self.character_cards.append({
@@ -400,7 +402,7 @@ class EncodingView(tk.Frame):
             text="当前字符 · 字节视图",
             bg="#F3F5FC",
             fg="#64748B",
-            font=(FONT_FAMILY, 9, "bold"),
+            font=(FONT_FAMILY, 10, "bold"),
         ).pack(pady=(10, 5))
 
         self.detail_char_canvas = tk.Canvas(
@@ -418,7 +420,7 @@ class EncodingView(tk.Frame):
             text="等待选择",
             bg="#F3F5FC",
             fg="#334155",
-            font=("Consolas", 10, "bold"),
+            font=("Consolas", 11, "bold"),
         )
         self.detail_codepoint.pack(pady=(5, 5))
 
@@ -427,7 +429,7 @@ class EncodingView(tk.Frame):
             text="UTF-8 字节",
             bg="#F3F5FC",
             fg="#64748B",
-            font=(FONT_FAMILY, 9),
+            font=(FONT_FAMILY, 10),
         )
         self.detail_encoding.pack()
 
@@ -439,7 +441,7 @@ class EncodingView(tk.Frame):
             text="",
             bg="#F3F5FC",
             fg="#8491A5",
-            font=(FONT_FAMILY, 8),
+            font=(FONT_FAMILY, 9),
         )
         self.detail_bit_count.pack(pady=(0, 8))
 
@@ -454,14 +456,14 @@ class EncodingView(tk.Frame):
             text="换算过程",
             bg=COLOR_BACKGROUND,
             fg="#172033",
-            font=(FONT_FAMILY, 12, "bold"),
+            font=(FONT_FAMILY, 13, "bold"),
         ).pack(side="left")
         tk.Label(
             header,
             text="CONVERSION STEPS",
             bg=COLOR_BACKGROUND,
             fg="#94A3B8",
-            font=("Segoe UI", 8, "bold"),
+            font=("Segoe UI", 9, "bold"),
         ).pack(side="right")
 
         cards = tk.Frame(section, bg=COLOR_BACKGROUND)
@@ -506,14 +508,14 @@ class EncodingView(tk.Frame):
                 12.5,
                 text=f"{index + 1:02d}",
                 fill="#FFFFFF",
-                font=("Segoe UI", 7, "bold"),
+                font=("Segoe UI", 8, "bold"),
             )
             tk.Label(
                 card_header,
                 text=title,
                 bg="#FFFFFF",
                 fg="#263248",
-                font=(FONT_FAMILY, 10, "bold"),
+                font=(FONT_FAMILY, 11, "bold"),
             ).pack(side="left", padx=(9, 0))
 
             description = tk.Label(
@@ -521,7 +523,7 @@ class EncodingView(tk.Frame):
                 text="选择结果行后显示换算信息。",
                 bg="#FFFFFF",
                 fg="#718096",
-                font=(FONT_FAMILY, 9),
+                font=(FONT_FAMILY, 10),
                 justify="left",
                 anchor="nw",
                 wraplength=180,
@@ -573,7 +575,7 @@ class EncodingView(tk.Frame):
             anchor="w",
             text="01  /  ENCODING WORKSHOP",
             fill="#C7D2FE",
-            font=("Segoe UI", 9, "bold"),
+            font=("Segoe UI", 10, "bold"),
         )
         canvas.create_line(28, 44, 66, 44, fill="#FFFFFF", width=3)
         canvas.create_text(
@@ -582,7 +584,7 @@ class EncodingView(tk.Frame):
             anchor="w",
             text="编码工坊",
             fill="#FFFFFF",
-            font=(FONT_FAMILY, 23, "bold"),
+            font=(FONT_FAMILY, 24, "bold"),
         )
         canvas.create_text(
             29,
@@ -590,7 +592,7 @@ class EncodingView(tk.Frame):
             anchor="w",
             text="从字符到字节，让每一个编码步骤都清晰可见。",
             fill="#E0E7FF",
-            font=(FONT_FAMILY, 10),
+            font=(FONT_FAMILY, 11),
         )
 
     def parse_input(self):
@@ -660,7 +662,7 @@ class EncodingView(tk.Frame):
             31,
             text=char,
             fill="#FFFFFF",
-            font=(FONT_FAMILY, 20 if len(char) > 1 else 28, "bold"),
+            font=(FONT_FAMILY, 21 if len(char) > 1 else 29, "bold"),
         )
         self.detail_codepoint.configure(
             text=f"U+{codepoint:04X}  ·  DEC {codepoint}",
@@ -718,14 +720,14 @@ class EncodingView(tk.Frame):
                 text=f"{byte:02X}",
                 bg="#FFFFFF",
                 fg=COLOR_PRIMARY,
-                font=("Consolas", 11, "bold"),
+                font=("Consolas", 12, "bold"),
             ).pack(padx=8, pady=(5, 0))
             tk.Label(
                 chip,
                 text=f"{byte:08b}",
                 bg="#FFFFFF",
                 fg="#64748B",
-                font=("Consolas", 8),
+                font=("Consolas", 9),
             ).pack(padx=5, pady=(1, 5))
 
         self.detail_bit_count.configure(
@@ -745,7 +747,7 @@ class EncodingView(tk.Frame):
             outline="",
         )
         self.detail_char_canvas.create_text(
-            31, 31, text="—", fill="#FFFFFF", font=(FONT_FAMILY, 24, "bold"),
+            31, 31, text="—", fill="#FFFFFF", font=(FONT_FAMILY, 25, "bold"),
         )
         self.detail_codepoint.configure(text="等待输入")
         self.detail_encoding.configure(text="字节视图")
