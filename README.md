@@ -5,7 +5,7 @@
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](#运行环境)
 [![License](https://img.shields.io/badge/License-MIT-16A34A)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-76%20passed-16A34A)](tests/)
+[![Tests](https://img.shields.io/badge/tests-113%20passed-16A34A)](tests/)
 [![Stdlib](https://img.shields.io/badge/third--party-0-6B7280)](#运行环境)
 
 ---
@@ -16,13 +16,14 @@
 
 | 模块 | 一句话 | 负责人 | 状态 |
 | :--- | :--- | :--- | :--- |
-| **编码工坊** | 输入任意文本，逐字符显示码点、UTF-8 / GBK 字节与位流，并把进制互转的竖式画出来 | 周恩旭 | 未开始 |
-| **校验实验室** | 五种校验方案的校验位计算、组帧、接收端判定 | 高郑豪 | **算法已完成** |
-| **信道模拟器** | 组帧后点击任意一位注入错误，接收端判定，并对比五种方案的检出能力 | 周恩旭 | 未开始 |
-| **界面层** | 1280×800 主窗口 + 左侧导航 + 三个页面 | 张鑫渝 | 未开始 |
+| **编码工坊** | 输入任意文本，逐字符显示码点、UTF-8 / GBK 字节与位流，并把进制互转的竖式画出来 | 周恩旭 | 已完成 |
+| **校验实验室** | 五种校验方案的校验位计算、组帧、接收端判定 | 高郑豪 | 已完成 |
+| **信道模拟器** | 组帧后点击任意一位注入错误，接收端判定，并对比五种方案的检出能力 | 周恩旭 | 已完成 |
+| **界面层** | 1360×880 主窗口 + 左侧导航 + 三个页面 | 张鑫渝 | 已完成 |
 
-> **当前进度**：组长高郑豪负责的五个校验算法与单元测试已完成并通过验收（见 [`tools/verify_core.py`](tools/verify_core.py)）。
-> 界面层与文档截图由张鑫渝、郑婉欣在后续分支上补充，合入 `main` 后即可演示。
+> **当前进度**：三个模块与界面已全部合入 `main`，运行 `python main.py` 即可演示。
+> 算法层验收见 [`tools/verify_core.py`](tools/verify_core.py) 与 [`tools/verify_encoding.py`](tools/verify_encoding.py)。
+> 剩余工作：README 页面截图（郑婉欣）。
 
 ![项目结构](images/architecture.png)
 
@@ -84,17 +85,17 @@ python -m unittest discover -s tests -v
 预期结果：
 
 ```text
-Ran 76 tests in 0.0XXs
+Ran 113 tests in 0.0XXs
 OK
 ```
 
-### 3.4 启动图形界面（等张鑫渝的界面合入后）
+### 3.4 启动图形界面
 
 ```bash
 python main.py
 ```
 
-> `main.py` 与 `app/views/` 由界面负责人张鑫渝在 `feature/ui` 分支上实现，尚未合入 `main`。
+> 窗口默认 1360×880（最小 1200×800），左侧导航切换三个页面，`Ctrl+1/2/3` 也能切。
 
 ---
 
@@ -102,19 +103,31 @@ python main.py
 
 ```text
 NetCodecLab/
+├── main.py                # 启动入口：python main.py
 ├── app/
-│   ├── common/            # 公共层：位串工具、全局常量（不依赖 Tkinter）
+│   ├── common/            # 公共层：位串工具、全局常量、配色与控件（界面共用）
 │   │   ├── bits.py        #   文本 / 字节 / 位串互转、位翻转、补零对齐
-│   │   └── config.py      #   8 位字节、默认字符集、输入上限等常量
-│   └── core/              # 算法层：五种校验算法（纯函数，可单独测试）
-│       ├── parity.py      #   奇偶校验（一维）
-│       ├── matrix.py      #   二维奇偶校验（行列定位纠错）
-│       ├── crc.py         #   CRC 模 2 除法（逐位竖式，不用查表）
-│       ├── checksum.py    #   Internet 校验和（RFC 1071）
-│       └── hamming.py     #   汉明码 (7,4) 编解码
-├── tests/                 # 单元测试（76 个用例）
+│   │   ├── config.py      #   8 位字节、默认字符集、输入上限等常量
+│   │   ├── theme.py       #   配色与字体常量
+│   │   └── widgets.py     #   位串条、步骤表、卡片等公共控件
+│   ├── core/              # 算法层：五种校验 + 编码 + 进制 + 信道（纯函数）
+│   │   ├── parity.py      #   奇偶校验（一维）
+│   │   ├── matrix.py      #   二维奇偶校验（行列定位纠错）
+│   │   ├── crc.py         #   CRC 模 2 除法（逐位竖式，不用查表）
+│   │   ├── checksum.py    #   Internet 校验和（RFC 1071）
+│   │   ├── hamming.py     #   汉明码 (7,4) 编解码
+│   │   ├── encoding.py    #   字符编码拆解（UTF-8 / GBK / 位流）
+│   │   ├── convert.py     #   进制互转（按权展开 / 除基取余）
+│   │   └── channel.py     #   组帧、注入错误、五方案对比、批量统计
+│   └── views/             # 界面层：主窗口 + 三个页面
+│       ├── main_window.py
+│       ├── encoding_view.py
+│       ├── checksum_view.py
+│       └── channel_view.py
+├── tests/                 # 单元测试（113 个用例）
 ├── tools/
-│   └── verify_core.py     # 命令行验收脚本
+│   ├── verify_core.py     # 校验算法命令行验收
+│   └── verify_encoding.py # 编码 / 进制 / 信道命令行验收
 ├── docs/
 │   └── git-conflict.md    # 合并冲突演练记录
 ├── images/                # 文档配图（架构图、帧结构、界面设计稿）
@@ -215,6 +228,9 @@ main（受保护，只能通过 PR 合入）
 | #6 | `feature/core-matrix` | 二维奇偶校验 | 已合并 ✅ |
 | #7 | `feature/conflict-a` | 默认字符集改为 UTF-8 | 已合并 ✅ |
 | #8 | `feature/conflict-b` | 默认字符集改为 GBK（与 #7 同一行，**产生冲突**） | 冲突已解决后合并 ✅ |
+| #9 | `docs/leader-handover` | README、AI 记录、冲突演练记录 | 已合并 ✅ |
+| #10 | `feature/encoding` | 字符编码拆解、进制竖式、信道模拟与批量对比 | 已合并 ✅ |
+| #11 | `feat/ui` | 主窗口、主题与公共控件、三个页面（与 #10 在 `app/core/` 上**产生冲突**） | 冲突已解决后合并 ✅ |
 
 每个 PR 都写了「做了什么 / 怎么验的」，合并后删除对应分支，`main` 保持受保护状态。
 
