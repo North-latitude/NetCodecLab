@@ -259,6 +259,59 @@ class EncodingView(tk.Frame):
         self.selected_index = None
         self.cards_canvas.xview_moveto(0)
 
+    def _create_decimal_card(self, response):
+        """在字符卡片前插入十进制转二进制的竖式卡片。"""
+        card = tk.Frame(
+            self.cards_frame,
+            width=196,
+            height=190,
+            bg="#FFFFFF",
+            highlightbackground=COLOR_PRIMARY,
+            highlightthickness=2,
+        )
+        card.pack(side="left", fill="y", padx=(8, 4), pady=8)
+        card.pack_propagate(False)
+        tk.Frame(card, bg=COLOR_PRIMARY, height=3).pack(fill="x")
+
+        header = tk.Frame(card, bg="#FFFFFF")
+        header.pack(fill="x", padx=10, pady=(6, 0))
+        tk.Label(
+            header, text="DEC → BIN", bg="#FFFFFF", fg=COLOR_PRIMARY,
+            font=("Segoe UI", 9, "bold"),
+        ).pack(side="left")
+        tk.Label(
+            header, text="除 2 取余", bg="#FFFFFF", fg="#94A3B8",
+            font=(FONT_FAMILY, 8),
+        ).pack(side="right")
+
+        if not response["ok"]:
+            tk.Label(
+                card, text=response["message"], bg="#FFFFFF", fg=COLOR_ERROR,
+                font=(FONT_FAMILY, 9), justify="left", anchor="nw",
+                wraplength=170,
+            ).pack(fill="both", expand=True, padx=10, pady=8)
+            return
+
+        result = response["result"]
+        tk.Label(
+            card, text=f"十进制 {result['value']}", bg="#FFFFFF", fg="#172033",
+            font=(FONT_FAMILY, 11, "bold"),
+        ).pack(anchor="w", padx=10, pady=(3, 0))
+
+        body = "\n".join(
+            f"{item['dividend']:>4} ÷ 2 = {item['quotient']:>4} 余 {item['remainder']}"
+            for item in result["rows"]
+        )
+        tk.Label(
+            card, text=body, bg="#FFFFFF", fg="#475569",
+            font=("Consolas", 9), justify="left", anchor="w",
+        ).pack(fill="x", padx=10, pady=(3, 2))
+
+        tk.Label(
+            card, text=f"从下往上 → {result['binary']}", bg="#FFFFFF",
+            fg=COLOR_PRIMARY, font=("Consolas", 11, "bold"),
+        ).pack(anchor="w", padx=10)
+
     def _create_character_card(self, index, record):
         card = tk.Frame(
             self.cards_frame,
@@ -626,6 +679,12 @@ class EncodingView(tk.Frame):
             return
 
         bitstream = text_to_bitstream(text, primary)
+        decimal_text = text.strip()
+        decimal_response = None
+        if decimal_text.isdigit():
+            # 纯数字输入时，额外在最左侧插入十进制转二进制的竖式卡片（T-03）。
+            decimal_response = decimal_to_binary(decimal_text)
+            self._create_decimal_card(decimal_response)
         for index, item in enumerate(response["result"]["chars"]):
             record = {
                 "char": item["char"],
@@ -648,6 +707,14 @@ class EncodingView(tk.Frame):
                 "部分内容无法编码"
             )
             color = COLOR_ERROR
+        if decimal_response is not None:
+            if decimal_response["ok"]:
+                status += (
+                    f" · 十进制 {decimal_response['result']['value']} → "
+                    f"{decimal_response['result']['binary']}"
+                )
+            else:
+                status += f" · {decimal_response['message']}"
         self.status_label.configure(text=status, fg=color)
         self._select_character(0)
 
