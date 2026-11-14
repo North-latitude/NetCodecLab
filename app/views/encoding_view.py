@@ -11,7 +11,7 @@ if __name__ == "__main__":
     if str(PROJECT_ROOT) not in sys.path:
         sys.path.insert(0, str(PROJECT_ROOT))
 
-from app.core import encode_text, text_to_bitstream
+from app.core import decimal_to_binary, encode_text, text_to_bitstream
 from app.common.theme import (
     COLOR_BACKGROUND,
     COLOR_ERROR,
@@ -149,6 +149,22 @@ class EncodingView(tk.Frame):
             cursor="hand2",
         )
         self.parse_button.pack(side="left")
+        self.convert_button = tk.Button(
+            row,
+            text="进制换算",
+            command=self._open_base_convert_dialog,
+            bg="#EEF2FF",
+            fg="#4338CA",
+            activebackground="#E0E7FF",
+            activeforeground="#3730A3",
+            font=FONT_BOLD,
+            relief="flat",
+            bd=0,
+            padx=16,
+            pady=7,
+            cursor="hand2",
+        )
+        self.convert_button.pack(side="left", padx=(8, 0))
 
         self.status_label = tk.Label(
             card,
@@ -634,6 +650,104 @@ class EncodingView(tk.Frame):
             color = COLOR_ERROR
         self.status_label.configure(text=status, fg=color)
         self._select_character(0)
+
+    def _open_base_convert_dialog(self):
+        """打开十进制转二进制的竖式换算窗口（对应验收项 T-03）。"""
+        existing = getattr(self, "_convert_dialog", None)
+        if existing is not None and existing.winfo_exists():
+            existing.lift()
+            existing.focus_force()
+            return
+
+        dialog = tk.Toplevel(self)
+        self._convert_dialog = dialog
+        dialog.title("十进制 → 二进制")
+        dialog.configure(bg=COLOR_BACKGROUND)
+        dialog.geometry("580x480")
+        dialog.transient(self.winfo_toplevel())
+
+        card = tk.Frame(
+            dialog, bg="#FFFFFF", highlightbackground="#D5DDE9",
+            highlightthickness=1,
+        )
+        card.pack(fill="both", expand=True, padx=18, pady=18)
+        tk.Frame(card, bg=COLOR_PRIMARY, height=3).pack(fill="x")
+
+        tk.Label(
+            card, text="十进制转二进制 · 除 2 取余竖式", bg="#FFFFFF",
+            fg="#172033", font=(FONT_FAMILY, 13, "bold"),
+        ).pack(anchor="w", padx=16, pady=(12, 8))
+
+        row = tk.Frame(card, bg="#FFFFFF")
+        row.pack(fill="x", padx=16)
+        tk.Label(
+            row, text="十进制整数", bg="#FFFFFF", fg="#334155", font=FONT_BOLD,
+        ).pack(side="left")
+        value_var = tk.StringVar(value="78")
+        entry = tk.Entry(
+            row, textvariable=value_var, width=10, bg="#F5F7FB", fg="#1E293B",
+            insertbackground=COLOR_PRIMARY, font=("Consolas", 13),
+            relief="solid", bd=1,
+        )
+        entry.pack(side="left", padx=(12, 12), ipady=4)
+
+        result_label = tk.Label(
+            card, text="", bg="#FFFFFF", fg=COLOR_PRIMARY,
+            font=("Consolas", 13, "bold"), anchor="w",
+        )
+        result_label.pack(fill="x", padx=16, pady=(10, 4))
+
+        ladder = tk.Text(
+            card, height=9, bg="#F8FAFD", fg="#1E293B",
+            font=("Consolas", 12), relief="flat", bd=0, padx=12, pady=8,
+        )
+        ladder.pack(fill="both", expand=True, padx=16, pady=(0, 8))
+
+        hint = tk.Label(
+            card, text="", bg="#FFFFFF", fg="#718096",
+            font=(FONT_FAMILY, 10), anchor="w", justify="left", wraplength=520,
+        )
+        hint.pack(fill="x", padx=16, pady=(0, 10))
+
+        def convert():
+            response = decimal_to_binary(value_var.get())
+            ladder.configure(state="normal")
+            ladder.delete("1.0", "end")
+            if not response["ok"]:
+                result_label.configure(text="无法换算", fg=COLOR_ERROR)
+                ladder.insert("1.0", response["message"])
+                hint.configure(text="")
+            else:
+                lines = [
+                    f"{item['dividend']:>5} ÷ 2 = {item['quotient']:>5}   …   余 {item['remainder']}"
+                    for item in response["result"]["rows"]
+                ]
+                lines.append("")
+                lines.append(
+                    f"从下往上读余数  →  {response['result']['binary']}"
+                )
+                ladder.insert("1.0", "\n".join(lines))
+                result_label.configure(
+                    text=f"二进制结果  {response['result']['binary']}",
+                    fg=COLOR_PRIMARY,
+                )
+                hint.configure(
+                    text=f"共 {response['result']['width']} 位 · {response['message']}",
+                )
+            ladder.configure(state="disabled")
+
+        tk.Button(
+            row, text="换算", command=convert, bg=COLOR_PRIMARY, fg="#FFFFFF",
+            activebackground="#1D4ED8", activeforeground="#FFFFFF",
+            font=FONT_BOLD, relief="flat", bd=0, padx=18, pady=6,
+            cursor="hand2",
+        ).pack(side="left")
+        entry.bind("<Return>", lambda event: convert())
+        convert()
+        dialog.update_idletasks()
+        x = self.winfo_toplevel().winfo_rootx() + 90
+        y = self.winfo_toplevel().winfo_rooty() + 70
+        dialog.geometry(f"+{max(x, 0)}+{max(y, 0)}")
 
     def _selected_encoding_key(self):
         return "utf8" if self.charset_var.get() == "UTF-8" else "gbk"

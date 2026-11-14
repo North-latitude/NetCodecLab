@@ -24,7 +24,7 @@ from app.common.theme import (
 # 演示字号比公共主题大 1 磅，便于课堂投影查看。
 FONT_NORMAL = (FONT_FAMILY, 11)
 FONT_BOLD = (FONT_FAMILY, 11, "bold")
-from app.core import checksum, crc, hamming, matrix, parity
+from app.core import batch_experiment, checksum, crc, hamming, matrix, parity
 
 
 def _mix_colors(start, end, ratio):
@@ -147,6 +147,22 @@ class ChannelView(tk.Frame):
             pady=7,
             cursor="hand2",
         ).pack(side="left", padx=(8, 0))
+        self.batch_button = tk.Button(
+            row,
+            text="批量实验",
+            command=self._open_batch_dialog,
+            bg="#ECFDF5",
+            fg="#047857",
+            activebackground="#D1FAE5",
+            activeforeground="#065F46",
+            font=FONT_NORMAL,
+            relief="flat",
+            bd=0,
+            padx=14,
+            pady=7,
+            cursor="hand2",
+        )
+        self.batch_button.pack(side="left", padx=(8, 0))
 
         self.status_label = tk.Label(
             card,
@@ -789,6 +805,139 @@ class ChannelView(tk.Frame):
             return
         self.flipped = {key: set() for key in self.KEYS}
         self._refresh_all()
+
+    def _open_batch_dialog(self):
+        """打开批量实验窗口：同一 seed 连跑两次并比对统计（对应验收项 T-10）。"""
+        existing = getattr(self, "_batch_dialog", None)
+        if existing is not None and existing.winfo_exists():
+            existing.lift()
+            existing.focus_force()
+            return
+
+        dialog = tk.Toplevel(self)
+        self._batch_dialog = dialog
+        dialog.title("批量实验")
+        dialog.configure(bg=COLOR_BACKGROUND)
+        dialog.geometry("700x540")
+        dialog.transient(self.winfo_toplevel())
+
+        card = tk.Frame(
+            dialog, bg="#FFFFFF", highlightbackground="#D5DDE9",
+            highlightthickness=1,
+        )
+        card.pack(fill="both", expand=True, padx=18, pady=18)
+        tk.Frame(card, bg="#10B981", height=3).pack(fill="x")
+
+        tk.Label(
+            card, text="批量实验 · 同一随机种子可复现", bg="#FFFFFF",
+            fg="#172033", font=(FONT_FAMILY, 13, "bold"),
+        ).pack(anchor="w", padx=16, pady=(12, 4))
+        tk.Label(
+            card,
+            text="用相同 seed 连续跑两次，比较五种方案的统计是否完全一致。",
+            bg="#FFFFFF", fg="#718096", font=(FONT_FAMILY, 10), anchor="w",
+        ).pack(fill="x", padx=16, pady=(0, 8))
+
+        controls = tk.Frame(card, bg="#FFFFFF")
+        controls.pack(fill="x", padx=16)
+        runs_var = tk.StringVar(value="200")
+        flips_var = tk.StringVar(value="1")
+        seed_var = tk.StringVar(value="2026")
+        for label, var, width in (
+            ("实验次数", runs_var, 7),
+            ("每次翻转位数", flips_var, 5),
+            ("随机种子", seed_var, 8),
+        ):
+            tk.Label(
+                controls, text=label, bg="#FFFFFF", fg="#334155",
+                font=FONT_NORMAL,
+            ).pack(side="left")
+            tk.Entry(
+                controls, textvariable=var, width=width, bg="#F5F7FB",
+                fg="#1E293B", insertbackground="#059669",
+                font=("Consolas", 12), relief="solid", bd=1,
+            ).pack(side="left", padx=(8, 14), ipady=4)
+
+        style = ttk.Style(self)
+        style.configure(
+            "Batch.Treeview",
+            background="#FFFFFF", fieldbackground="#FFFFFF",
+            foreground="#334155", rowheight=30, borderwidth=0,
+            font=(FONT_FAMILY, 10),
+        )
+        style.configure(
+            "Batch.Treeview.Heading",
+            background="#EEF2F7", foreground="#64748B", relief="flat",
+            font=(FONT_FAMILY, 10, "bold"),
+        )
+        tree = ttk.Treeview(
+            card, columns=("length", "detected", "corrected", "missed"),
+            show="tree headings", height=6, style="Batch.Treeview",
+            selectmode="none",
+        )
+        tree.column("#0", width=170, anchor="w")
+        tree.heading("#0", text="校验方案")
+        for key, title, width in (
+            ("length", "帧长", 70),
+            ("detected", "检出次数", 90),
+            ("corrected", "纠正次数", 90),
+            ("missed", "漏检次数", 90),
+        ):
+            tree.column(key, width=width, anchor="center")
+            tree.heading(key, text=title)
+        for key, label in self.SCHEMES:
+            tree.insert("", "end", iid=key, text=label, values=("—", "—", "—", "—"))
+        tree.pack(fill="both", expand=True, padx=16, pady=(12, 8))
+
+        status = tk.Label(
+            card, text="点击运行，使用当前数据做批量实验。", bg="#FFFFFF",
+            fg="#64748B", font=(FONT_FAMILY, 10), anchor="w",
+            justify="left", wraplength=620,
+        )
+        status.pack(fill="x", padx=16, pady=(0, 12))
+
+        def run():
+            try:
+                runs = int(runs_var.get().strip() or "0")
+                flips = int(flips_var.get().strip() or "0")
+                seed = int(seed_var.get().strip() or "0")
+            except ValueError:
+                status.configure(
+                    text="实验次数、翻转位数、随机种子都必须填整数。",
+                    fg=COLOR_ERROR,
+                )
+                return
+            data = self.data or self.data_var.get()
+            response = batch_experiment(data, runs, flips, seed)
+            if not response["ok"]:
+                status.configure(text=response["message"], fg=COLOR_ERROR)
+                return
+            result = response["result"]
+            for key, _ in self.SCHEMES:
+                stat = result["stats"][key]
+                tree.item(
+                    key,
+                    values=(stat["frame_length"], stat["detected"],
+                            stat["corrected"], stat["missed"]),
+                )
+            reproducible = result["reproducible"]
+            status.configure(
+                text=response["message"] + "｜复现校验："
+                + ("两次结果完全一致 ✓" if reproducible else "两次结果不一致 ✗"),
+                fg=COLOR_PASS if reproducible else COLOR_ERROR,
+            )
+
+        tk.Button(
+            controls, text="运行", command=run, bg="#059669", fg="#FFFFFF",
+            activebackground="#047857", activeforeground="#FFFFFF",
+            font=FONT_BOLD, relief="flat", bd=0, padx=18, pady=6,
+            cursor="hand2",
+        ).pack(side="left")
+        run()
+        dialog.update_idletasks()
+        x = self.winfo_toplevel().winfo_rootx() + 80
+        y = self.winfo_toplevel().winfo_rooty() + 60
+        dialog.geometry(f"+{max(x, 0)}+{max(y, 0)}")
 
     def _show_input_error(self, message):
         self.status_label.configure(text=message, fg=COLOR_ERROR)
