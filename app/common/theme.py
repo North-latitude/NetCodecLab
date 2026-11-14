@@ -1,0 +1,13 @@
+"""全局颜色与字体常量。"""
+
+# 颜色
+COLOR_PRIMARY = "#2563EB"
+COLOR_BACKGROUND = "#E8EDF4"
+COLOR_ERROR = "#DC2626"
+COLOR_PASS = "#16A34A"
+
+# 字体：微软雅黑
+FONT_FAMILY = "Microsoft YaHei"
+FONT_NORMAL = (FONT_FAMILY, 10)
+FONT_BOLD = (FONT_FAMILY, 10, "bold")
+FONT_TITLE = (FONT_FAMILY, 20, "bold")
