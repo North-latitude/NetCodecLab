@@ -11,7 +11,13 @@ if __name__ == "__main__":
     if str(PROJECT_ROOT) not in sys.path:
         sys.path.insert(0, str(PROJECT_ROOT))
 
-from app.core import decimal_to_binary, encode_text, text_to_bitstream
+from app.core import (
+    base_to_dec,
+    dec_to_base,
+    decimal_to_binary,
+    encode_text,
+    text_to_bitstream,
+)
 from app.common.theme import (
     COLOR_BACKGROUND,
     COLOR_ERROR,
@@ -719,7 +725,13 @@ class EncodingView(tk.Frame):
         self._select_character(0)
 
     def _open_base_convert_dialog(self):
-        """打开十进制转二进制的竖式换算窗口（对应验收项 T-03）。"""
+        """进制换算窗口：2 / 8 / 10 / 16 任意互转，两种算法都画竖式。
+
+        - 十进制 -> 其它进制：走 dec_to_base，画“除基取余”；
+        - 其它进制 -> 十进制：走 base_to_dec，画“按权展开”；
+        - 两个都不是十进制：先按权展开算出十进制值，再除基取余转过去，
+          两段过程都显示，中间的十进制值也标出来。
+        """
         existing = getattr(self, "_convert_dialog", None)
         if existing is not None and existing.winfo_exists():
             existing.lift()
@@ -728,9 +740,9 @@ class EncodingView(tk.Frame):
 
         dialog = tk.Toplevel(self)
         self._convert_dialog = dialog
-        dialog.title("十进制 → 二进制")
+        dialog.title("进制转换")
         dialog.configure(bg=COLOR_BACKGROUND)
-        dialog.geometry("580x480")
+        dialog.geometry("660x560")
         dialog.transient(self.winfo_toplevel())
 
         card = tk.Frame(
@@ -741,66 +753,176 @@ class EncodingView(tk.Frame):
         tk.Frame(card, bg=COLOR_PRIMARY, height=3).pack(fill="x")
 
         tk.Label(
-            card, text="十进制转二进制 · 除 2 取余竖式", bg="#FFFFFF",
+            card, text="进制转换 · 除基取余 / 按权展开", bg="#FFFFFF",
             fg="#172033", font=(FONT_FAMILY, 13, "bold"),
         ).pack(anchor="w", padx=16, pady=(12, 8))
 
         row = tk.Frame(card, bg="#FFFFFF")
         row.pack(fill="x", padx=16)
         tk.Label(
-            row, text="十进制整数", bg="#FFFFFF", fg="#334155", font=FONT_BOLD,
+            row, text="数值", bg="#FFFFFF", fg="#334155", font=FONT_BOLD,
         ).pack(side="left")
         value_var = tk.StringVar(value="78")
         entry = tk.Entry(
-            row, textvariable=value_var, width=10, bg="#F5F7FB", fg="#1E293B",
+            row, textvariable=value_var, width=12, bg="#F5F7FB", fg="#1E293B",
             insertbackground=COLOR_PRIMARY, font=("Consolas", 13),
             relief="solid", bd=1,
         )
-        entry.pack(side="left", padx=(12, 12), ipady=4)
+        entry.pack(side="left", padx=(10, 14), ipady=4)
+
+        tk.Label(row, text="从", bg="#FFFFFF", fg="#334155",
+                 font=FONT_BOLD).pack(side="left")
+        base_names = ("二进制", "八进制", "十进制", "十六进制")
+        from_var = tk.StringVar(value="十进制")
+        ttk.Combobox(
+            row, textvariable=from_var, values=base_names, width=7,
+            state="readonly", font=FONT_NORMAL,
+        ).pack(side="left", padx=(8, 12), ipady=3)
+
+        tk.Label(row, text="转到", bg="#FFFFFF", fg="#334155",
+                 font=FONT_BOLD).pack(side="left")
+        to_var = tk.StringVar(value="二进制")
+        ttk.Combobox(
+            row, textvariable=to_var, values=base_names, width=7,
+            state="readonly", font=FONT_NORMAL,
+        ).pack(side="left", padx=(8, 12), ipady=3)
 
         result_label = tk.Label(
             card, text="", bg="#FFFFFF", fg=COLOR_PRIMARY,
             font=("Consolas", 13, "bold"), anchor="w",
         )
-        result_label.pack(fill="x", padx=16, pady=(10, 4))
+        result_label.pack(fill="x", padx=16, pady=(12, 4))
 
         ladder = tk.Text(
-            card, height=9, bg="#F8FAFD", fg="#1E293B",
+            card, height=13, bg="#F8FAFD", fg="#1E293B",
             font=("Consolas", 12), relief="flat", bd=0, padx=12, pady=8,
         )
         ladder.pack(fill="both", expand=True, padx=16, pady=(0, 8))
 
         hint = tk.Label(
             card, text="", bg="#FFFFFF", fg="#718096",
-            font=(FONT_FAMILY, 10), anchor="w", justify="left", wraplength=520,
+            font=(FONT_FAMILY, 10), anchor="w", justify="left", wraplength=600,
         )
         hint.pack(fill="x", padx=16, pady=(0, 10))
 
-        def convert():
-            response = decimal_to_binary(value_var.get())
+        base_of = {"二进制": 2, "八进制": 8, "十进制": 10, "十六进制": 16}
+
+        def _division_lines(value, base):
+            """把 dec_to_base 的过程画成竖式：被除数 ÷ 基数 = 商 … 余数。"""
+            digits = "0123456789ABCDEF"
+            lines = []
+            quotient = value
+            while quotient > 0:
+                remainder = quotient % base
+                # 十六进制这类 base > 10 的，把 14 额外标成 E，避免看完还要自己换算
+                mark = f"（{digits[remainder]}）" if base > 10 else ""
+                lines.append(
+                    f"{quotient:>8} ÷ {base:>2} = {quotient // base:>8}"
+                    f"    …    余 {remainder:>2}{mark}"
+                )
+                quotient //= base
+            return lines
+
+        def _expansion_lines(terms, base):
+            """把 base_to_dec 的过程画成展开式：数字 × 基数^位权 = 贡献。"""
+            lines = []
+            for char, weight, contribution in terms:
+                lines.append(
+                    f"  {char:>2} × {base}^{weight:<2} = {contribution:>8}"
+                )
+            return lines
+
+        def convert(*_event):
+            source = base_of[from_var.get()]
+            target = base_of[to_var.get()]
+            raw = value_var.get().strip()
             ladder.configure(state="normal")
             ladder.delete("1.0", "end")
-            if not response["ok"]:
-                result_label.configure(text="无法换算", fg=COLOR_ERROR)
-                ladder.insert("1.0", response["message"])
-                hint.configure(text="")
-            else:
-                lines = [
-                    f"{item['dividend']:>5} ÷ 2 = {item['quotient']:>5}   …   余 {item['remainder']}"
-                    for item in response["result"]["rows"]
-                ]
+            hint.configure(text="")
+
+            if source == target:
+                result_label.configure(text=f"源和目标是同一个进制（{from_var.get()}）",
+                                       fg="#718096")
+                ladder.insert("1.0", "选择两个不同的进制再换算。")
+                ladder.configure(state="disabled")
+                return
+
+            if source == 10:
+                first = dec_to_base(raw, target)
+                if not first["ok"]:
+                    result_label.configure(text="无法换算", fg=COLOR_ERROR)
+                    ladder.insert("1.0", first["message"])
+                    ladder.configure(state="disabled")
+                    return
+                value = first["result"]["value"]
+                lines = _division_lines(value, target)
+                if not lines:
+                    lines = ["0 除以任何进制都是 0"]
                 lines.append("")
-                lines.append(
-                    f"从下往上读余数  →  {response['result']['binary']}"
-                )
+                lines.append(f"从下往上读余数  →  {first['result']['text']}")
                 ladder.insert("1.0", "\n".join(lines))
                 result_label.configure(
-                    text=f"二进制结果  {response['result']['binary']}",
+                    text=f"{value}（十进制） = {first['result']['text']}"
+                         f"（{first['result']['base_name']}）",
                     fg=COLOR_PRIMARY,
                 )
-                hint.configure(
-                    text=f"共 {response['result']['width']} 位 · {response['message']}",
+                hint.configure(text=first["message"])
+                ladder.configure(state="disabled")
+                return
+
+            if target == 10:
+                second = base_to_dec(raw, source)
+                if not second["ok"]:
+                    result_label.configure(text="无法换算", fg=COLOR_ERROR)
+                    ladder.insert("1.0", second["message"])
+                    ladder.configure(state="disabled")
+                    return
+                terms = second["result"]["terms"]
+                lines = _expansion_lines(terms, source)
+                lines.append("")
+                lines.append("求和  →  " + " + ".join(
+                    str(contribution) for _, _, contribution in terms
+                ) + f" = {second['result']['value']}")
+                ladder.insert("1.0", "\n".join(lines))
+                result_label.configure(
+                    text=f"{raw.upper()}（{second['result']['base_name']}） = "
+                         f"{second['result']['value']}（十进制）",
+                    fg=COLOR_PRIMARY,
                 )
+                hint.configure(text=second["message"])
+                ladder.configure(state="disabled")
+                return
+
+            # 两个都不是十进制：先按权展开算出十进制，再除基取余转过去
+            first = base_to_dec(raw, source)
+            if not first["ok"]:
+                result_label.configure(text="无法换算", fg=COLOR_ERROR)
+                ladder.insert("1.0", first["message"])
+                ladder.configure(state="disabled")
+                return
+            decimal_value = first["result"]["value"]
+            second = dec_to_base(decimal_value, target)
+            if not second["ok"]:
+                result_label.configure(text="无法换算", fg=COLOR_ERROR)
+                ladder.insert("1.0", second["message"])
+                ladder.configure(state="disabled")
+                return
+
+            lines = [f"① 按权展开：{raw.upper()}（{first['result']['base_name']}）→ 十进制"]
+            lines.extend(_expansion_lines(first["result"]["terms"], source))
+            lines.append(f"   求和 = {decimal_value}")
+            lines.append("")
+            lines.append(f"② 除基取余：{decimal_value}（十进制）→ {second['result']['base_name']}")
+            lines.extend(_division_lines(decimal_value, target))
+            lines.append("")
+            lines.append(f"从下往上读余数  →  {second['result']['text']}")
+            ladder.insert("1.0", "\n".join(lines))
+            result_label.configure(
+                text=f"{raw.upper()}（{first['result']['base_name']}） = "
+                     f"{second['result']['text']}（{second['result']['base_name']}）",
+                fg=COLOR_PRIMARY,
+            )
+            hint.configure(text=f"中间十进制值 = {decimal_value}")
             ladder.configure(state="disabled")
 
         tk.Button(
@@ -809,7 +931,10 @@ class EncodingView(tk.Frame):
             font=FONT_BOLD, relief="flat", bd=0, padx=18, pady=6,
             cursor="hand2",
         ).pack(side="left")
-        entry.bind("<Return>", lambda event: convert())
+
+        entry.bind("<Return>", convert)
+        from_var.trace_add("write", lambda *_: convert())
+        to_var.trace_add("write", lambda *_: convert())
         convert()
         dialog.update_idletasks()
         x = self.winfo_toplevel().winfo_rootx() + 90
