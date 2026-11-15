@@ -5,12 +5,14 @@
     steps 是 [{'title': ..., 'detail': ...}, ...]，界面按行显示即可
 """
 
-from .channel import batch_experiment, build_frames  # noqa: F401
 from .checksum import checksum_frame, inet_checksum, inet_verify  # noqa: F401
+from .channel import SCHEMES, batch_compare, compare_schemes, inject_error  # noqa: F401
+from .convert import base_to_dec, dec_to_base  # noqa: F401
 from .convert import decimal_to_binary  # noqa: F401
+from .experiment import batch_experiment, build_frames  # noqa: F401
 from .crc import CRC_PRESETS, PRESET_LABELS, crc_check, crc_encode, crc_of_text  # noqa: F401
-from .hamming import hamming_decode, hamming_encode  # noqa: F401
 from .encoding import encode_text, text_to_bitstream  # noqa: F401
+from .hamming import hamming_decode, hamming_encode  # noqa: F401
 from .matrix import matrix_check, matrix_encode, matrix_frame_to_text  # noqa: F401
 from .parity import (  # noqa: F401
     MODE_EVEN,
@@ -18,6 +20,7 @@ from .parity import (  # noqa: F401
     MODE_ODD,
     parity_bit_for,
     parity_check,
+    parity_locate,
     parity_encode,
 )
 
@@ -28,6 +31,10 @@ __all__ = [
     "crc_encode", "crc_check", "crc_of_text", "CRC_PRESETS", "PRESET_LABELS",
     "inet_checksum", "inet_verify", "checksum_frame",
     "hamming_encode", "hamming_decode",
+    "parity_locate",
+    "decimal_to_binary",
+    "batch_experiment", "build_frames",
+    "dec_to_base", "base_to_dec",
     "encode_text", "text_to_bitstream",
-    "decimal_to_binary", "batch_experiment", "build_frames",
+    "inject_error", "compare_schemes", "batch_compare", "SCHEMES",
 ]
