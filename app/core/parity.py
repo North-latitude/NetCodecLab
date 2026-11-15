@@ -135,3 +135,53 @@ def parity_check(frame: str, mode: str = MODE_EVEN) -> dict:
         "message": ("检出错误：1 的个数不符合" + MODE_NAMES[mode] + "约定")
         if detected else "校验通过：1 的个数符合" + MODE_NAMES[mode] + "约定",
     }
+
+
+def parity_locate(frame: str, mode: str = MODE_EVEN) -> dict:
+    """接收端：枚举“翻转后能通过校验”的候选错误位，用于说明一维校验的定位能力。
+
+    一维奇偶校验只携带 1 位校验信息，无法唯一确定出错位：
+    - 未出错时，翻转任意一位都会失败，候选为空；
+    - 单比特错误时，翻转任意一位都会让奇偶性重新满足约定，候选为全部位置；
+    - 多位错误时，可能没有任何单比特翻转能让校验通过，候选为空。
+
+    返回 {ok, candidates, total, unique, corrected, steps, message}
+    candidates 为 0 起的位下标列表；unique 表示是否能唯一定位。
+    """
+    try:
+        bits = normalize_bits(frame)
+        _check_mode(mode)
+    except ValueError as exc:
+        return {"ok": False, "candidates": [], "total": 0, "unique": False,
+                "corrected": None, "steps": [], "message": str(exc)}
+
+    want_odd = mode == MODE_ODD
+    candidates = []
+    for index in range(len(bits)):
+        flipped = bits[:index] + ("1" if bits[index] == "0" else "0") + bits[index + 1:]
+        if (count_ones(flipped) % 2 == 1) == want_odd:
+            candidates.append(index)
+
+    unique = len(candidates) == 1
+    corrected = None
+    if unique:
+        index = candidates[0]
+        corrected = bits[:index] + ("1" if bits[index] == "0" else "0") + bits[index + 1:]
+
+    steps = [
+        _step("枚举候选位",
+              f"逐个翻转 1 位后重新校验，能通过{MODE_NAMES[mode]}的位置共 {len(candidates)} 个"),
+        _step("唯一性判定",
+              "候选只有 1 个，可唯一定位" if unique
+              else f"候选 {len(candidates)} 个，一维校验信息不足，无法唯一定位"),
+    ]
+    return {
+        "ok": True,
+        "candidates": candidates,
+        "total": len(bits),
+        "unique": unique,
+        "corrected": corrected,
+        "steps": steps,
+        "message": (f"可唯一定位第 {candidates[0] + 1} 位" if unique
+                    else f"候选错误位 {len(candidates)} 个，无法唯一定位"),
+    }

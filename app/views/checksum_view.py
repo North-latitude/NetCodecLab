@@ -19,10 +19,12 @@ from app.common.theme import (
     COLOR_ERROR,
     COLOR_PASS,
     COLOR_PRIMARY,
-    FONT_BOLD,
     FONT_FAMILY,
-    FONT_NORMAL,
 )
+
+# 演示字号比公共主题大 1 磅，便于课堂投影查看。
+FONT_NORMAL = (FONT_FAMILY, 11)
+FONT_BOLD = (FONT_FAMILY, 11, "bold")
 
 
 def _mix_colors(start, end, ratio):
@@ -50,15 +52,24 @@ class ChecksumView(tk.Frame):
     """五种校验方案的发送、错误注入与接收判定可视化。"""
 
     SCHEMES = (
-        "一维奇偶校验", "二维奇偶校验", "CRC-16/CCITT",
-        "Internet 校验和", "汉明码（7,4）",
+        "一维奇偶校验（偶）", "一维奇偶校验（奇）",
+        "二维奇偶校验（偶）", "二维奇偶校验（奇）",
+        "CRC-16/CCITT", "Internet 校验和", "汉明码（7,4）",
     )
     SCHEME_KEYS = {
-        "一维奇偶校验": "parity",
-        "二维奇偶校验": "matrix",
+        "一维奇偶校验（偶）": "parity",
+        "一维奇偶校验（奇）": "parity",
+        "二维奇偶校验（偶）": "matrix",
+        "二维奇偶校验（奇）": "matrix",
         "CRC-16/CCITT": "crc",
         "Internet 校验和": "inet",
         "汉明码（7,4）": "hamming",
+    }
+    SCHEME_MODES = {
+        "一维奇偶校验（偶）": "even",
+        "一维奇偶校验（奇）": "odd",
+        "二维奇偶校验（偶）": "even",
+        "二维奇偶校验（奇）": "odd",
     }
     CRC_PRESET = "CRC-16/CCITT"
 
@@ -109,7 +120,7 @@ class ChecksumView(tk.Frame):
             textvariable=self.scheme_var,
             values=self.SCHEMES,
             state="readonly",
-            width=15,
+            width=19,
             font=FONT_NORMAL,
         )
         self.scheme_box.pack(side="left", padx=(10, 16), ipady=3)
@@ -126,7 +137,7 @@ class ChecksumView(tk.Frame):
             bg="#F5F7FB",
             fg="#1E293B",
             insertbackground=COLOR_PRIMARY,
-            font=("Consolas", 11),
+            font=("Consolas", 12),
             relief="solid",
             bd=1,
         )
@@ -157,7 +168,7 @@ class ChecksumView(tk.Frame):
             text="二进制位串；CRC 方案可输入 1～9 个 ASCII 字符（如 123456789）",
             bg="#FFFFFF",
             fg="#64748B",
-            font=(FONT_FAMILY, 9),
+            font=(FONT_FAMILY, 10),
             anchor="w",
         )
         self.status_label.pack(fill="x", padx=18, pady=(0, 10))
@@ -172,14 +183,14 @@ class ChecksumView(tk.Frame):
         header.pack(fill="x", padx=16, pady=(11, 4))
         tk.Label(
             header, text="帧传输可视化", bg="#FFFFFF", fg="#172033",
-            font=(FONT_FAMILY, 11, "bold"),
+            font=(FONT_FAMILY, 12, "bold"),
         ).pack(side="left")
         tk.Label(
             header,
             text="蓝框为校验位 · 点击接收帧反转 · 红框为错误位",
             bg="#FFFFFF",
             fg="#8491A5",
-            font=(FONT_FAMILY, 8),
+            font=(FONT_FAMILY, 9),
         ).pack(side="right")
 
         sent_row = tk.Frame(card, bg="#FFFFFF")
@@ -219,11 +230,11 @@ class ChecksumView(tk.Frame):
         header.pack(fill="x", pady=(0, 8))
         tk.Label(
             header, text="计算步骤", bg=COLOR_BACKGROUND, fg="#172033",
-            font=(FONT_FAMILY, 11, "bold"),
+            font=(FONT_FAMILY, 12, "bold"),
         ).pack(side="left")
         tk.Label(
             header, text="CALCULATION STEPS", bg=COLOR_BACKGROUND, fg="#94A3B8",
-            font=("Segoe UI", 8, "bold"),
+            font=("Segoe UI", 9, "bold"),
         ).pack(side="right")
 
         cards = tk.Frame(process, bg=COLOR_BACKGROUND)
@@ -254,17 +265,17 @@ class ChecksumView(tk.Frame):
             number.create_oval(1, 1, 24, 24, fill=colors[index], outline="")
             number.create_text(
                 12.5, 12.5, text=f"{index + 1:02d}", fill="#FFFFFF",
-                font=("Segoe UI", 7, "bold"),
+                font=("Segoe UI", 8, "bold"),
             )
             title = tk.Label(
                 card_header, text="等待计算", bg="#FFFFFF", fg="#263248",
-                font=(FONT_FAMILY, 10, "bold"), anchor="w",
+                font=(FONT_FAMILY, 11, "bold"), anchor="w",
             )
             title.pack(side="left", padx=(8, 0))
 
             value = tk.Label(
                 card, text="—", bg="#F8FAFC", fg=colors[index],
-                font=("Consolas", 10, "bold"), anchor="w", padx=8, pady=3,
+                font=("Consolas", 11, "bold"), anchor="w", padx=8, pady=3,
             )
             value.pack(fill="x", padx=12, pady=(0, 5))
             description = tk.Label(
@@ -272,9 +283,10 @@ class ChecksumView(tk.Frame):
                 text="生成发送帧后显示当前步骤。",
                 bg="#FFFFFF",
                 fg="#718096",
-                font=(FONT_FAMILY, 8),
+                font=(FONT_FAMILY, 9),
                 justify="left",
                 anchor="nw",
+                width=1,
                 wraplength=190,
             )
             description.pack(fill="both", expand=True, padx=12, pady=(0, 8))
@@ -299,11 +311,11 @@ class ChecksumView(tk.Frame):
         receiver_header.pack(fill="x", padx=16, pady=(10, 4))
         tk.Label(
             receiver_header, text="接收端判定", bg="#FFFFFF", fg="#64748B",
-            font=(FONT_FAMILY, 9, "bold"),
+            font=(FONT_FAMILY, 10, "bold"),
         ).pack(side="left")
         tk.Label(
             receiver_header, text="RECEIVER", bg="#FFFFFF", fg="#A0AEC0",
-            font=("Segoe UI", 7, "bold"),
+            font=("Segoe UI", 8, "bold"),
         ).pack(side="right")
 
         status_row = tk.Frame(receiver, bg="#FFFFFF")
@@ -317,12 +329,12 @@ class ChecksumView(tk.Frame):
         status_text.pack(side="left", padx=(10, 0))
         self.receiver_status = tk.Label(
             status_text, text="等待发送帧", bg="#FFFFFF", fg="#64748B",
-            font=(FONT_FAMILY, 14, "bold"),
+            font=(FONT_FAMILY, 15, "bold"),
         )
         self.receiver_status.pack(anchor="w")
         self.receiver_state = tk.Label(
             status_text, text="WAITING FOR FRAME", bg="#FFFFFF", fg="#94A3B8",
-            font=("Segoe UI", 7, "bold"),
+            font=("Segoe UI", 8, "bold"),
         )
         self.receiver_state.pack(anchor="w", pady=(2, 0))
         self._draw_receiver_icon("#94A3B8", "…")
@@ -332,7 +344,7 @@ class ChecksumView(tk.Frame):
             text="选择校验方案并生成发送帧。",
             bg="#FFFFFF",
             fg="#64748B",
-            font=(FONT_FAMILY, 8),
+            font=(FONT_FAMILY, 9),
             justify="left",
             anchor="nw",
             wraplength=260,
@@ -353,11 +365,11 @@ class ChecksumView(tk.Frame):
             )
             tk.Label(
                 metric, text=title_text, bg="#F8FAFC", fg="#8491A5",
-                font=(FONT_FAMILY, 7, "bold"),
+                font=(FONT_FAMILY, 8, "bold"),
             ).pack(pady=(4, 0))
             metric_value = tk.Label(
                 metric, text="—", bg="#F8FAFC", fg="#334155",
-                font=("Consolas", 11, "bold"),
+                font=("Consolas", 12, "bold"),
             )
             metric_value.pack(pady=(0, 4))
             self.receiver_metric_values.append(metric_value)
@@ -367,7 +379,7 @@ class ChecksumView(tk.Frame):
             text="",
             bg="#FFFFFF",
             fg="#334155",
-            font=(FONT_FAMILY, 8, "bold"),
+            font=(FONT_FAMILY, 9, "bold"),
             justify="left",
             anchor="nw",
             wraplength=260,
@@ -375,7 +387,7 @@ class ChecksumView(tk.Frame):
         self.receiver_extra.pack(fill="x", padx=16, pady=(1, 4))
         self.receiver_data_title = tk.Label(
             receiver, text="接收数据", bg="#FFFFFF", fg="#8491A5",
-            font=(FONT_FAMILY, 8, "bold"),
+            font=(FONT_FAMILY, 9, "bold"),
         )
         self.receiver_data_title.pack(anchor="w", padx=16)
         self.receiver_data_canvas = tk.Canvas(
@@ -390,7 +402,7 @@ class ChecksumView(tk.Frame):
             text="汉明码演示每次反转 1 位",
             bg="#FFFFFF",
             fg="#94A3B8",
-            font=(FONT_FAMILY, 8),
+            font=(FONT_FAMILY, 9),
         )
         self.receiver_hint.pack(anchor="w", padx=16, pady=(0, 9))
 
@@ -399,7 +411,7 @@ class ChecksumView(tk.Frame):
         self.receiver_icon.create_oval(2, 2, 46, 46, fill=color, outline="")
         self.receiver_icon.create_text(
             24, 23, text=symbol, fill="#FFFFFF",
-            font=("Segoe UI Symbol", 19, "bold"),
+            font=("Segoe UI Symbol", 20, "bold"),
         )
 
     def _draw_hero(self, event=None):
@@ -425,16 +437,16 @@ class ChecksumView(tk.Frame):
 
         canvas.create_text(
             28, 24, anchor="w", text="02  /  CHECKSUM LABORATORY",
-            fill="#A5F3FC", font=("Segoe UI", 9, "bold"),
+            fill="#A5F3FC", font=("Segoe UI", 10, "bold"),
         )
         canvas.create_line(28, 42, 66, 42, fill="#FFFFFF", width=3)
         canvas.create_text(
             27, 68, anchor="w", text="校验实验室", fill="#FFFFFF",
-            font=(FONT_FAMILY, 23, "bold"),
+            font=(FONT_FAMILY, 24, "bold"),
         )
         canvas.create_text(
             29, 104, anchor="w", text="从发送帧到接收判定，观察校验与纠错的完整过程。",
-            fill="#CFFAFE", font=(FONT_FAMILY, 10),
+            fill="#CFFAFE", font=(FONT_FAMILY, 11),
         )
 
     def generate_frame(self):
@@ -505,10 +517,12 @@ class ChecksumView(tk.Frame):
         self._evaluate_receiver()
 
     def _parity_result(self, data):
-        encoded = parity.parity_encode(data, "even")
+        mode = self.SCHEME_MODES[self.scheme_var.get()]
+        encoded = parity.parity_encode(data, mode)
         frame = encoded["result"]["frame"]
         return {
             "key": "parity",
+            "mode": mode,
             "data": data,
             "frame": frame,
             "check_indices": {len(data)},
@@ -522,7 +536,8 @@ class ChecksumView(tk.Frame):
         side = max(1, math.ceil(math.sqrt(len(data))))
         padding = (-len(data)) % (side * side)
         padded = data + "0" * padding
-        encoded = matrix.matrix_encode(padded, side, side, "even")
+        mode = self.SCHEME_MODES[self.scheme_var.get()]
+        encoded = matrix.matrix_encode(padded, side, side, mode)
         frame = encoded["result"]["frame"]
         width = side + 1
         check_indices = {
@@ -530,6 +545,7 @@ class ChecksumView(tk.Frame):
         } | set(range(side * width, len(frame)))
         return {
             "key": "matrix",
+            "mode": mode,
             "data": data,
             "frame": frame,
             "side": side,
@@ -561,17 +577,28 @@ class ChecksumView(tk.Frame):
     def _crc_result(self, data, text=None):
         encoded = crc.crc_encode(data, preset=self.CRC_PRESET)
         frame = encoded["result"]["frame"]
+        steps = self._algorithm_steps(
+            encoded, "16 BIT · 0x1021",
+            f"INIT 0x{encoded['result']['init']:04X}",
+            encoded["result"]["crc_hex"],
+        )
+        if len(steps) > 1:
+            title, value, _ = steps[1]
+            source = (
+                f"ASCII 文本 {text} 转换为 {len(data)} 位数据"
+                if text is not None else f"输入 {len(data)} 位二进制数据"
+            )
+            steps[1] = (
+                title, value,
+                f"{source}；寄存器初值 0x{encoded['result']['init']:04X}。",
+            )
         return {
             "key": "crc",
             "data": data,
             "text": text,
             "frame": frame,
             "check_indices": set(range(len(data), len(frame))),
-            "steps": self._algorithm_steps(
-                encoded, "16 BIT · 0x1021",
-                f"INIT 0x{encoded['result']['init']:04X}",
-                encoded["result"]["crc_hex"],
-            ),
+            "steps": steps,
         }
 
     def _hamming_result(self, data):
@@ -661,37 +688,82 @@ class ChecksumView(tk.Frame):
             metric.configure(text=value, fg=color)
         self.receiver_detail.configure(text=outcome["detail"])
         self.receiver_extra.configure(text=outcome["extra"])
-        self.receiver_data_title.configure(
-            text="纠错后恢复的数据" if scheme == "hamming" else "接收端提取的数据",
-        )
+        if scheme == "hamming" or outcome.get("corrected", False):
+            data_title = "纠错后恢复的数据"
+        elif outcome.get("retransmitted", False):
+            data_title = "重传后恢复的数据"
+        else:
+            data_title = "接收端提取的数据"
+        self.receiver_data_title.configure(text=data_title)
+        hints = {
+            "parity": "一维校验只能检错；候选位不唯一时通过重传恢复数据",
+            "matrix": "二维奇偶校验可纠正单个错误，多位错误仅检错",
+            "inet": "Internet 校验和用于检错，点击接收位注入错误",
+            "crc": "CRC 用于检错，点击接收位观察余数变化",
+            "hamming": "汉明码演示每次反转 1 位",
+        }
+        self.receiver_hint.configure(text=hints[scheme])
         self.receiver_data_bits = outcome["data"]
         self.receiver_data_color = color
         self._draw_receiver_data()
 
         encode_steps = self.current["steps"]
         if len(encode_steps) > 3:
+            final_step = encode_steps[-1]
+            summary = final_step[2]
+            if scheme == "crc":
+                summary = (
+                    f"{len(self.current['data'])} 位数据 + 16 位 CRC → "
+                    f"{len(self.current['frame'])} 位发送帧。"
+                )
             encode_steps = encode_steps[:2] + [(
-                "后续编码步骤",
-                encode_steps[-1][1],
-                (
-                    f"共 {len(encode_steps) - 2} 个后续算法步骤，关键结果：\n"
-                    f"{encode_steps[-1][0]}：{encode_steps[-1][2]}"
-                ),
+                "后续编码步骤", final_step[1], summary,
             )]
         self._render_steps(encode_steps + [outcome["step"]])
         self.step_value_labels[3].configure(fg=color)
 
     def _check_parity(self):
-        verdict = parity.parity_check(self.received_bits, "even")
+        mode = self.current["mode"]
+        mode_name = parity.MODE_NAMES[mode]
+        verdict = parity.parity_check(self.received_bits, mode)
         valid = verdict.get("ok", True) and not verdict.get("detected", False)
         message = verdict.get("message", "")
+        if valid:
+            return {
+                "title": "校验通过",
+                "color": COLOR_PASS,
+                "detail": message,
+                "extra": f"{mode_name}只能检错，无法定位或纠正错误位。",
+                "data": self.received_bits[:-1],
+                "step": ("接收端奇偶判定", "PASS", message),
+            }
+
+        # 一维校验只有 1 位校验信息：先枚举候选错误位，说明定位是否唯一；
+        # 无法唯一时按真实协议的做法请求重传，用重传帧恢复数据。
+        located = parity.parity_locate(self.received_bits, mode)
+        candidates = located.get("candidates", [])
+        total = len(self.received_bits)
+        if candidates:
+            shown = "、".join(str(index + 1) for index in candidates[:8])
+            if len(candidates) > 8:
+                shown += " …"
+            locate_text = f"候选错误位：第 {shown} 位，共 {len(candidates)} 个"
+            step_value = f"{len(candidates)} 候选"
+        else:
+            locate_text = "候选错误位：无（疑似多位错误，单比特翻转均无法通过校验）"
+            step_value = "无法定位"
+        extra = (
+            f"{locate_text}\n"
+            f"候选不唯一 → 请求重传，恢复数据：{self.current['data']}"
+        )
         return {
-            "title": "校验通过" if valid else "检测到传输错误",
-            "color": COLOR_PASS if valid else COLOR_ERROR,
-            "detail": message,
-            "extra": "奇偶校验只能检错，无法定位或纠正错误位。",
-            "data": self.received_bits[:-1],
-            "step": ("接收端奇偶判定", "PASS" if valid else "ERROR", message),
+            "title": "检出错误，已请求重传",
+            "color": COLOR_ERROR,
+            "detail": f"{message}；{total} 个位置都可能出错，无法唯一定位。",
+            "extra": extra,
+            "data": self.current["data"],
+            "retransmitted": True,
+            "step": ("候选定位与重传", step_value, extra),
         }
 
     def _check_matrix(self):
@@ -701,21 +773,50 @@ class ChecksumView(tk.Frame):
             list(self.received_bits[index:index + width])
             for index in range(0, len(self.received_bits), width)
         ]
-        verdict = matrix.matrix_check(grid, "even")
-        valid = verdict.get("ok", True) and not verdict.get("detected", False)
+        verdict = matrix.matrix_check(grid, self.current["mode"])
+        detected = verdict.get("detected", False)
+        corrected_matrix = verdict.get("corrected")
+        corrected = detected and corrected_matrix is not None
+        output_grid = corrected_matrix if corrected else grid
         message = verdict.get("message", "")
         data = "".join(
-            self.received_bits[row * width + column]
+            output_grid[row][column]
             for row in range(side)
             for column in range(side)
         )[:len(self.current["data"])]
+        corrected_frame = "".join("".join(row) for row in output_grid)
+
+        if not detected:
+            title = "校验通过"
+            color = COLOR_PASS
+            extra = "行、列校验全部通过，无需纠错。"
+            step_value = "PASS"
+        elif corrected:
+            title = "错误已定位并纠正"
+            color = COLOR_PASS
+            row, column = verdict["error_pos"]
+            before = grid[row][column]
+            after = output_grid[row][column]
+            extra = (
+                f"纠错位置：第 {row + 1} 行第 {column + 1} 列"
+                f"（{before} → {after}）\n纠错后帧：{corrected_frame}"
+            )
+            step_value = f"R{row + 1} · C{column + 1}"
+        else:
+            title = "检测到无法纠正的错误"
+            color = COLOR_ERROR
+            extra = "多位错误导致交叉点不唯一，只能检错，不能擅自纠正。"
+            step_value = "UNCERTAIN"
+
         return {
-            "title": "校验通过" if valid else "检测到传输错误",
-            "color": COLOR_PASS if valid else COLOR_ERROR,
+            "title": title,
+            "color": color,
             "detail": message,
-            "extra": "接收方阵按原行列尺寸重建，判定与中间结果均来自 matrix_check。",
+            "extra": extra,
             "data": data,
-            "step": ("接收端方阵校验", "PASS" if valid else "DETECT", message),
+            "corrected": corrected,
+            "corrected_frame": corrected_frame if corrected else None,
+            "step": ("接收端定位与纠错", step_value, message),
         }
 
     def _check_internet_checksum(self):
@@ -731,7 +832,7 @@ class ChecksumView(tk.Frame):
             "title": "校验通过" if valid else "检测到传输错误",
             "color": COLOR_PASS if valid else COLOR_ERROR,
             "detail": detail,
-            "extra": "Internet 校验和用于检错，不提供错误定位与纠正。",
+            "extra": "仅用于检错，不能定位或纠正错误位。",
             "data": self.received_bits[:len(self.current["data"])],
             "step": ("接收端反码求和", sum_hex or "—", detail),
         }
@@ -820,7 +921,7 @@ class ChecksumView(tk.Frame):
             self.receiver_data_canvas.create_text(
                 max(self.receiver_data_canvas.winfo_width(), 220) / 2, 22,
                 text=self.current["text"], fill=self.receiver_data_color,
-                font=("Consolas", 12, "bold"),
+                font=("Consolas", 13, "bold"),
             )
             return
         self._draw_bits(
@@ -839,7 +940,7 @@ class ChecksumView(tk.Frame):
         if not bits:
             canvas.create_text(
                 8, 20, anchor="w", text="等待生成发送帧",
-                fill="#94A3B8", font=(FONT_FAMILY, 9),
+                fill="#94A3B8", font=(FONT_FAMILY, 10),
             )
             return
 
@@ -850,7 +951,7 @@ class ChecksumView(tk.Frame):
         gap = 3 if count <= 32 else 1
         cell_width = min(26, (width - 12 - gap * (count - 1)) / count)
         cell_width = max(cell_width, 6)
-        bit_font_size = 9 if cell_width >= 12 else 7
+        bit_font_size = 10 if cell_width >= 12 else 8
         total_width = cell_width * count + gap * (count - 1)
         start_x = max((width - total_width) / 2, 4)
         box_height = 25 if show_positions else 24
@@ -875,7 +976,7 @@ class ChecksumView(tk.Frame):
             if show_positions:
                 canvas.create_text(
                     (x1 + x2) / 2, 38, text=str(index + 1),
-                    fill="#A0AEC0", font=("Segoe UI", 6), tags=(tag,),
+                    fill="#A0AEC0", font=("Segoe UI", 7), tags=(tag,),
                 )
             if interactive:
                 canvas.tag_bind(

@@ -11,16 +11,18 @@ if __name__ == "__main__":
     if str(PROJECT_ROOT) not in sys.path:
         sys.path.insert(0, str(PROJECT_ROOT))
 
-from app.core import encode_text, text_to_bitstream
+from app.core import decimal_to_binary, encode_text, text_to_bitstream
 from app.common.theme import (
     COLOR_BACKGROUND,
     COLOR_ERROR,
     COLOR_PASS,
     COLOR_PRIMARY,
-    FONT_BOLD,
     FONT_FAMILY,
-    FONT_NORMAL,
 )
+
+# 演示字号比公共主题大 1 磅，便于课堂投影查看。
+FONT_NORMAL = (FONT_FAMILY, 11)
+FONT_BOLD = (FONT_FAMILY, 11, "bold")
 
 
 def _mix_colors(start, end, ratio):
@@ -100,7 +102,7 @@ class EncodingView(tk.Frame):
             bg="#F5F7FB",
             fg="#1E293B",
             insertbackground=COLOR_PRIMARY,
-            font=(FONT_FAMILY, 11),
+            font=(FONT_FAMILY, 12),
             relief="solid",
             bd=1,
         )
@@ -147,13 +149,29 @@ class EncodingView(tk.Frame):
             cursor="hand2",
         )
         self.parse_button.pack(side="left")
+        self.convert_button = tk.Button(
+            row,
+            text="进制换算",
+            command=self._open_base_convert_dialog,
+            bg="#EEF2FF",
+            fg="#4338CA",
+            activebackground="#E0E7FF",
+            activeforeground="#3730A3",
+            font=FONT_BOLD,
+            relief="flat",
+            bd=0,
+            padx=16,
+            pady=7,
+            cursor="hand2",
+        )
+        self.convert_button.pack(side="left", padx=(8, 0))
 
         self.status_label = tk.Label(
             card,
             text="输入字符后点击解析",
             bg="#FFFFFF",
             fg="#64748B",
-            font=(FONT_FAMILY, 9),
+            font=(FONT_FAMILY, 10),
             anchor="w",
         )
         self.status_label.pack(fill="x", padx=18, pady=(0, 10))
@@ -169,14 +187,14 @@ class EncodingView(tk.Frame):
             text="字符编码探索",
             bg=COLOR_BACKGROUND,
             fg="#172033",
-            font=(FONT_FAMILY, 12, "bold"),
+            font=(FONT_FAMILY, 13, "bold"),
         ).pack(side="left")
         tk.Label(
             header,
             text="点击字符卡片，观察编码细节",
             bg=COLOR_BACKGROUND,
             fg="#7B8BA1",
-            font=(FONT_FAMILY, 9),
+            font=(FONT_FAMILY, 10),
         ).pack(side="right")
 
         body = tk.Frame(
@@ -241,6 +259,59 @@ class EncodingView(tk.Frame):
         self.selected_index = None
         self.cards_canvas.xview_moveto(0)
 
+    def _create_decimal_card(self, response):
+        """在字符卡片前插入十进制转二进制的竖式卡片。"""
+        card = tk.Frame(
+            self.cards_frame,
+            width=196,
+            height=190,
+            bg="#FFFFFF",
+            highlightbackground=COLOR_PRIMARY,
+            highlightthickness=2,
+        )
+        card.pack(side="left", fill="y", padx=(8, 4), pady=8)
+        card.pack_propagate(False)
+        tk.Frame(card, bg=COLOR_PRIMARY, height=3).pack(fill="x")
+
+        header = tk.Frame(card, bg="#FFFFFF")
+        header.pack(fill="x", padx=10, pady=(6, 0))
+        tk.Label(
+            header, text="DEC → BIN", bg="#FFFFFF", fg=COLOR_PRIMARY,
+            font=("Segoe UI", 9, "bold"),
+        ).pack(side="left")
+        tk.Label(
+            header, text="除 2 取余", bg="#FFFFFF", fg="#94A3B8",
+            font=(FONT_FAMILY, 8),
+        ).pack(side="right")
+
+        if not response["ok"]:
+            tk.Label(
+                card, text=response["message"], bg="#FFFFFF", fg=COLOR_ERROR,
+                font=(FONT_FAMILY, 9), justify="left", anchor="nw",
+                wraplength=170,
+            ).pack(fill="both", expand=True, padx=10, pady=8)
+            return
+
+        result = response["result"]
+        tk.Label(
+            card, text=f"十进制 {result['value']}", bg="#FFFFFF", fg="#172033",
+            font=(FONT_FAMILY, 11, "bold"),
+        ).pack(anchor="w", padx=10, pady=(3, 0))
+
+        body = "\n".join(
+            f"{item['dividend']:>4} ÷ 2 = {item['quotient']:>4} 余 {item['remainder']}"
+            for item in result["rows"]
+        )
+        tk.Label(
+            card, text=body, bg="#FFFFFF", fg="#475569",
+            font=("Consolas", 9), justify="left", anchor="w",
+        ).pack(fill="x", padx=10, pady=(3, 2))
+
+        tk.Label(
+            card, text=f"从下往上 → {result['binary']}", bg="#FFFFFF",
+            fg=COLOR_PRIMARY, font=("Consolas", 11, "bold"),
+        ).pack(anchor="w", padx=10)
+
     def _create_character_card(self, index, record):
         card = tk.Frame(
             self.cards_frame,
@@ -265,14 +336,14 @@ class EncodingView(tk.Frame):
             text=f"CHAR {index + 1:02d}",
             bg="#FFFFFF",
             fg="#94A3B8",
-            font=("Segoe UI", 8, "bold"),
+            font=("Segoe UI", 9, "bold"),
         ).pack(side="left")
         tk.Label(
             header,
             text="Unicode",
             bg="#FFFFFF",
             fg="#94A3B8",
-            font=(FONT_FAMILY, 8),
+            font=(FONT_FAMILY, 9),
         ).pack(side="right")
 
         char_label = tk.Label(
@@ -280,7 +351,7 @@ class EncodingView(tk.Frame):
             text=self._display_char(record["char"]),
             bg="#FFFFFF",
             fg="#263248",
-            font=(FONT_FAMILY, 25, "bold"),
+            font=(FONT_FAMILY, 26, "bold"),
         )
         char_label.pack(pady=(2, 0))
         tk.Label(
@@ -288,7 +359,7 @@ class EncodingView(tk.Frame):
             text=f"U+{record['codepoint']:04X}",
             bg="#FFFFFF",
             fg=COLOR_PRIMARY,
-            font=("Consolas", 10, "bold"),
+            font=("Consolas", 11, "bold"),
         ).pack()
         tk.Frame(surface, bg="#E2E8F0", height=1).pack(
             fill="x", padx=13, pady=7,
@@ -302,14 +373,14 @@ class EncodingView(tk.Frame):
                 text=title,
                 bg="#FFFFFF",
                 fg="#8491A5",
-                font=("Segoe UI", 8, "bold"),
+                font=("Segoe UI", 9, "bold"),
             ).pack(side="left")
             tk.Label(
                 row,
                 text=self._hex_bytes(record[key]),
                 bg="#FFFFFF",
                 fg="#334155",
-                font=("Consolas", 9, "bold"),
+                font=("Consolas", 10, "bold"),
             ).pack(side="right")
 
         selected_bytes = record[self._selected_encoding_key()]
@@ -319,7 +390,7 @@ class EncodingView(tk.Frame):
             text=f"位流  ·  {bit_count} BIT" if selected_bytes is not None else "位流不可用",
             bg="#FFFFFF",
             fg="#8491A5",
-            font=(FONT_FAMILY, 8),
+            font=(FONT_FAMILY, 9),
         ).pack(anchor="w", padx=12, pady=(7, 2))
 
         bits_canvas = tk.Canvas(
@@ -349,7 +420,7 @@ class EncodingView(tk.Frame):
         else:
             bits_canvas.create_text(
                 70, 10, text="NOT SUPPORTED", fill=COLOR_ERROR,
-                font=("Segoe UI", 8, "bold"),
+                font=("Segoe UI", 9, "bold"),
             )
 
         self.character_cards.append({
@@ -400,7 +471,7 @@ class EncodingView(tk.Frame):
             text="当前字符 · 字节视图",
             bg="#F3F5FC",
             fg="#64748B",
-            font=(FONT_FAMILY, 9, "bold"),
+            font=(FONT_FAMILY, 10, "bold"),
         ).pack(pady=(10, 5))
 
         self.detail_char_canvas = tk.Canvas(
@@ -418,7 +489,7 @@ class EncodingView(tk.Frame):
             text="等待选择",
             bg="#F3F5FC",
             fg="#334155",
-            font=("Consolas", 10, "bold"),
+            font=("Consolas", 11, "bold"),
         )
         self.detail_codepoint.pack(pady=(5, 5))
 
@@ -427,7 +498,7 @@ class EncodingView(tk.Frame):
             text="UTF-8 字节",
             bg="#F3F5FC",
             fg="#64748B",
-            font=(FONT_FAMILY, 9),
+            font=(FONT_FAMILY, 10),
         )
         self.detail_encoding.pack()
 
@@ -439,7 +510,7 @@ class EncodingView(tk.Frame):
             text="",
             bg="#F3F5FC",
             fg="#8491A5",
-            font=(FONT_FAMILY, 8),
+            font=(FONT_FAMILY, 9),
         )
         self.detail_bit_count.pack(pady=(0, 8))
 
@@ -454,14 +525,14 @@ class EncodingView(tk.Frame):
             text="换算过程",
             bg=COLOR_BACKGROUND,
             fg="#172033",
-            font=(FONT_FAMILY, 12, "bold"),
+            font=(FONT_FAMILY, 13, "bold"),
         ).pack(side="left")
         tk.Label(
             header,
             text="CONVERSION STEPS",
             bg=COLOR_BACKGROUND,
             fg="#94A3B8",
-            font=("Segoe UI", 8, "bold"),
+            font=("Segoe UI", 9, "bold"),
         ).pack(side="right")
 
         cards = tk.Frame(section, bg=COLOR_BACKGROUND)
@@ -506,14 +577,14 @@ class EncodingView(tk.Frame):
                 12.5,
                 text=f"{index + 1:02d}",
                 fill="#FFFFFF",
-                font=("Segoe UI", 7, "bold"),
+                font=("Segoe UI", 8, "bold"),
             )
             tk.Label(
                 card_header,
                 text=title,
                 bg="#FFFFFF",
                 fg="#263248",
-                font=(FONT_FAMILY, 10, "bold"),
+                font=(FONT_FAMILY, 11, "bold"),
             ).pack(side="left", padx=(9, 0))
 
             description = tk.Label(
@@ -521,7 +592,7 @@ class EncodingView(tk.Frame):
                 text="选择结果行后显示换算信息。",
                 bg="#FFFFFF",
                 fg="#718096",
-                font=(FONT_FAMILY, 9),
+                font=(FONT_FAMILY, 10),
                 justify="left",
                 anchor="nw",
                 wraplength=180,
@@ -573,7 +644,7 @@ class EncodingView(tk.Frame):
             anchor="w",
             text="01  /  ENCODING WORKSHOP",
             fill="#C7D2FE",
-            font=("Segoe UI", 9, "bold"),
+            font=("Segoe UI", 10, "bold"),
         )
         canvas.create_line(28, 44, 66, 44, fill="#FFFFFF", width=3)
         canvas.create_text(
@@ -582,7 +653,7 @@ class EncodingView(tk.Frame):
             anchor="w",
             text="编码工坊",
             fill="#FFFFFF",
-            font=(FONT_FAMILY, 23, "bold"),
+            font=(FONT_FAMILY, 24, "bold"),
         )
         canvas.create_text(
             29,
@@ -590,7 +661,7 @@ class EncodingView(tk.Frame):
             anchor="w",
             text="从字符到字节，让每一个编码步骤都清晰可见。",
             fill="#E0E7FF",
-            font=(FONT_FAMILY, 10),
+            font=(FONT_FAMILY, 11),
         )
 
     def parse_input(self):
@@ -608,6 +679,12 @@ class EncodingView(tk.Frame):
             return
 
         bitstream = text_to_bitstream(text, primary)
+        decimal_text = text.strip()
+        decimal_response = None
+        if decimal_text.isdigit():
+            # 纯数字输入时，额外在最左侧插入十进制转二进制的竖式卡片（T-03）。
+            decimal_response = decimal_to_binary(decimal_text)
+            self._create_decimal_card(decimal_response)
         for index, item in enumerate(response["result"]["chars"]):
             record = {
                 "char": item["char"],
@@ -630,8 +707,114 @@ class EncodingView(tk.Frame):
                 "部分内容无法编码"
             )
             color = COLOR_ERROR
+        if decimal_response is not None:
+            if decimal_response["ok"]:
+                status += (
+                    f" · 十进制 {decimal_response['result']['value']} → "
+                    f"{decimal_response['result']['binary']}"
+                )
+            else:
+                status += f" · {decimal_response['message']}"
         self.status_label.configure(text=status, fg=color)
         self._select_character(0)
+
+    def _open_base_convert_dialog(self):
+        """打开十进制转二进制的竖式换算窗口（对应验收项 T-03）。"""
+        existing = getattr(self, "_convert_dialog", None)
+        if existing is not None and existing.winfo_exists():
+            existing.lift()
+            existing.focus_force()
+            return
+
+        dialog = tk.Toplevel(self)
+        self._convert_dialog = dialog
+        dialog.title("十进制 → 二进制")
+        dialog.configure(bg=COLOR_BACKGROUND)
+        dialog.geometry("580x480")
+        dialog.transient(self.winfo_toplevel())
+
+        card = tk.Frame(
+            dialog, bg="#FFFFFF", highlightbackground="#D5DDE9",
+            highlightthickness=1,
+        )
+        card.pack(fill="both", expand=True, padx=18, pady=18)
+        tk.Frame(card, bg=COLOR_PRIMARY, height=3).pack(fill="x")
+
+        tk.Label(
+            card, text="十进制转二进制 · 除 2 取余竖式", bg="#FFFFFF",
+            fg="#172033", font=(FONT_FAMILY, 13, "bold"),
+        ).pack(anchor="w", padx=16, pady=(12, 8))
+
+        row = tk.Frame(card, bg="#FFFFFF")
+        row.pack(fill="x", padx=16)
+        tk.Label(
+            row, text="十进制整数", bg="#FFFFFF", fg="#334155", font=FONT_BOLD,
+        ).pack(side="left")
+        value_var = tk.StringVar(value="78")
+        entry = tk.Entry(
+            row, textvariable=value_var, width=10, bg="#F5F7FB", fg="#1E293B",
+            insertbackground=COLOR_PRIMARY, font=("Consolas", 13),
+            relief="solid", bd=1,
+        )
+        entry.pack(side="left", padx=(12, 12), ipady=4)
+
+        result_label = tk.Label(
+            card, text="", bg="#FFFFFF", fg=COLOR_PRIMARY,
+            font=("Consolas", 13, "bold"), anchor="w",
+        )
+        result_label.pack(fill="x", padx=16, pady=(10, 4))
+
+        ladder = tk.Text(
+            card, height=9, bg="#F8FAFD", fg="#1E293B",
+            font=("Consolas", 12), relief="flat", bd=0, padx=12, pady=8,
+        )
+        ladder.pack(fill="both", expand=True, padx=16, pady=(0, 8))
+
+        hint = tk.Label(
+            card, text="", bg="#FFFFFF", fg="#718096",
+            font=(FONT_FAMILY, 10), anchor="w", justify="left", wraplength=520,
+        )
+        hint.pack(fill="x", padx=16, pady=(0, 10))
+
+        def convert():
+            response = decimal_to_binary(value_var.get())
+            ladder.configure(state="normal")
+            ladder.delete("1.0", "end")
+            if not response["ok"]:
+                result_label.configure(text="无法换算", fg=COLOR_ERROR)
+                ladder.insert("1.0", response["message"])
+                hint.configure(text="")
+            else:
+                lines = [
+                    f"{item['dividend']:>5} ÷ 2 = {item['quotient']:>5}   …   余 {item['remainder']}"
+                    for item in response["result"]["rows"]
+                ]
+                lines.append("")
+                lines.append(
+                    f"从下往上读余数  →  {response['result']['binary']}"
+                )
+                ladder.insert("1.0", "\n".join(lines))
+                result_label.configure(
+                    text=f"二进制结果  {response['result']['binary']}",
+                    fg=COLOR_PRIMARY,
+                )
+                hint.configure(
+                    text=f"共 {response['result']['width']} 位 · {response['message']}",
+                )
+            ladder.configure(state="disabled")
+
+        tk.Button(
+            row, text="换算", command=convert, bg=COLOR_PRIMARY, fg="#FFFFFF",
+            activebackground="#1D4ED8", activeforeground="#FFFFFF",
+            font=FONT_BOLD, relief="flat", bd=0, padx=18, pady=6,
+            cursor="hand2",
+        ).pack(side="left")
+        entry.bind("<Return>", lambda event: convert())
+        convert()
+        dialog.update_idletasks()
+        x = self.winfo_toplevel().winfo_rootx() + 90
+        y = self.winfo_toplevel().winfo_rooty() + 70
+        dialog.geometry(f"+{max(x, 0)}+{max(y, 0)}")
 
     def _selected_encoding_key(self):
         return "utf8" if self.charset_var.get() == "UTF-8" else "gbk"
@@ -660,7 +843,7 @@ class EncodingView(tk.Frame):
             31,
             text=char,
             fill="#FFFFFF",
-            font=(FONT_FAMILY, 20 if len(char) > 1 else 28, "bold"),
+            font=(FONT_FAMILY, 21 if len(char) > 1 else 29, "bold"),
         )
         self.detail_codepoint.configure(
             text=f"U+{codepoint:04X}  ·  DEC {codepoint}",
@@ -718,14 +901,14 @@ class EncodingView(tk.Frame):
                 text=f"{byte:02X}",
                 bg="#FFFFFF",
                 fg=COLOR_PRIMARY,
-                font=("Consolas", 11, "bold"),
+                font=("Consolas", 12, "bold"),
             ).pack(padx=8, pady=(5, 0))
             tk.Label(
                 chip,
                 text=f"{byte:08b}",
                 bg="#FFFFFF",
                 fg="#64748B",
-                font=("Consolas", 8),
+                font=("Consolas", 9),
             ).pack(padx=5, pady=(1, 5))
 
         self.detail_bit_count.configure(
@@ -745,7 +928,7 @@ class EncodingView(tk.Frame):
             outline="",
         )
         self.detail_char_canvas.create_text(
-            31, 31, text="—", fill="#FFFFFF", font=(FONT_FAMILY, 24, "bold"),
+            31, 31, text="—", fill="#FFFFFF", font=(FONT_FAMILY, 25, "bold"),
         )
         self.detail_codepoint.configure(text="等待输入")
         self.detail_encoding.configure(text="字节视图")
