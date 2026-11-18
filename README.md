@@ -23,7 +23,7 @@
 
 > **当前进度**：三个模块与界面已全部合入 `main`，运行 `python main.py` 即可演示。
 > 算法层验收见 [`tools/verify_core.py`](tools/verify_core.py) 与 [`tools/verify_encoding.py`](tools/verify_encoding.py)。
-> 剩余工作：README 页面截图（郑婉欣）。
+> 逐条点验的截图见 [`docs/test-report.md`](docs/test-report.md)（T-01 ~ T-11 全通过）。
 
 ![项目结构](images/architecture.png)
 
@@ -145,7 +145,8 @@ NetCodecLab/
 │   ├── verify_encoding.py # 编码 / 进制 / 信道命令行验收
 │   └── self_check.py      # 全功能自查：算法 19 项 + 界面 13 项
 ├── docs/
-│   └── git-conflict.md    # 合并冲突演练记录
+│   ├── git-conflict.md    # 合并冲突演练记录
+│   └── test-report.md     # 功能测试记录（T-01 ~ T-11 截图）
 ├── images/                # 文档配图（架构图、帧结构、界面设计稿）
 ├── Project_Requirements_and_Design.md
 ├── AI_Prompts_Log.md
