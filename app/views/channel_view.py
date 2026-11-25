@@ -562,7 +562,7 @@ class ChannelView(tk.Frame):
             tag = "pass"
             color = COLOR_PASS
         elif corrected:
-            title = "检出并已纠正"
+            title = "检出"
             tag = "corrected"
             color = "#0284C7"
         else:
@@ -661,10 +661,7 @@ class ChannelView(tk.Frame):
             for position, key in enumerate(self.KEYS):
                 if position < revealed:
                     outcome = self.outcomes[key]
-                    verdict = (
-                        "通过" if outcome["valid"]
-                        else "已纠正" if outcome["corrected"] else "检出"
-                    )
+                    verdict = "通过" if outcome["valid"] else "检出"
                     correction = (
                         "已纠正" if outcome["corrected"]
                         else "—" if outcome["valid"] else "不能"
@@ -674,7 +671,8 @@ class ChannelView(tk.Frame):
                         tags.append("odd")
                     self.table.item(
                         key,
-                        text=self.LABELS[key],
+                        text=("▶ " if position == revealed - 1 else "   ")
+                        + self.LABELS[key],
                         values=(
                             len(self.frames[key]["result"]["frame"]),
                             verdict,
@@ -684,7 +682,7 @@ class ChannelView(tk.Frame):
                     )
                 else:
                     self.table.item(
-                        key, text=self.LABELS[key],
+                        key, text="   " + self.LABELS[key],
                         values=("—", "—", "—"), tags=(),
                     )
             if sync_selection and revealed > 0:
@@ -754,7 +752,7 @@ class ChannelView(tk.Frame):
         try:
             for index, key in enumerate(self.KEYS):
                 outcome = self.outcomes[key]
-                verdict = "通过" if outcome["valid"] else "已纠正" if outcome["corrected"] else "检出"
+                verdict = "通过" if outcome["valid"] else "检出"
                 correction = "已纠正" if outcome["corrected"] else "—" if outcome["valid"] else "不能"
                 tags = [outcome["tag"]]
                 if index % 2:

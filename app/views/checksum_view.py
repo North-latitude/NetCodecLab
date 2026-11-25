@@ -98,16 +98,16 @@ class ChecksumView(tk.Frame):
 
     def _build_hero(self):
         self.hero = tk.Canvas(
-            self, height=132, bg="#0891B2", highlightthickness=0, bd=0,
+            self, height=122, bg="#0891B2", highlightthickness=0, bd=0,
         )
-        self.hero.pack(fill="x", padx=24, pady=(20, 14))
+        self.hero.pack(fill="x", padx=24, pady=(12, 10))
         self.hero.bind("<Configure>", self._draw_hero)
 
     def _build_input_area(self):
         card = tk.Frame(
             self, bg="#FFFFFF", highlightbackground="#D5DDE9", highlightthickness=1,
         )
-        card.pack(fill="x", padx=24, pady=(0, 14))
+        card.pack(fill="x", padx=24, pady=(0, 10))
         tk.Frame(card, bg="#0891B2", height=3).pack(fill="x")
 
         row = tk.Frame(card, bg="#FFFFFF")
@@ -182,7 +182,7 @@ class ChecksumView(tk.Frame):
         card.pack(fill="x", padx=24)
 
         header = tk.Frame(card, bg="#FFFFFF")
-        header.pack(fill="x", padx=16, pady=(11, 4))
+        header.pack(fill="x", padx=16, pady=(8, 3))
         tk.Label(
             header, text="帧传输可视化", bg="#FFFFFF", fg="#172033",
             font=(FONT_FAMILY, 12, "bold"),
@@ -202,26 +202,92 @@ class ChecksumView(tk.Frame):
             font=FONT_BOLD,
         ).pack(side="left")
         self.sent_canvas = tk.Canvas(
-            sent_row, height=47, bg="#FFFFFF", highlightthickness=0, bd=0,
+            sent_row, height=43, bg="#FFFFFF", highlightthickness=0, bd=0,
         )
         self.sent_canvas.pack(side="left", fill="x", expand=True)
         self.sent_canvas.bind("<Configure>", lambda event: self._draw_frames())
 
         received_row = tk.Frame(card, bg="#FFFFFF")
-        received_row.pack(fill="x", padx=14, pady=(0, 9))
+        received_row.pack(fill="x", padx=14, pady=(0, 6))
         tk.Label(
             received_row, text="接收帧", width=8, bg="#FFFFFF", fg="#475569",
             font=FONT_BOLD,
         ).pack(side="left")
         self.received_canvas = tk.Canvas(
-            received_row, height=47, bg="#FFFFFF", highlightthickness=0, bd=0,
+            received_row, height=43, bg="#FFFFFF", highlightthickness=0, bd=0,
         )
         self.received_canvas.pack(side="left", fill="x", expand=True)
         self.received_canvas.bind("<Configure>", lambda event: self._draw_frames())
 
+        # 纠错成功后才会显示的一行：与接收帧并排对照
+        self.corrected_row = tk.Frame(card, bg="#FFFFFF")
+        tk.Label(
+            self.corrected_row, text="纠错后帧", width=8, bg="#FFFFFF",
+            fg="#059669", font=FONT_BOLD,
+        ).pack(side="left")
+        self.corrected_canvas = tk.Canvas(
+            self.corrected_row, height=43, bg="#FFFFFF",
+            highlightthickness=0, bd=0,
+        )
+        self.corrected_canvas.pack(side="left", fill="x", expand=True)
+        self.corrected_canvas.bind(
+            "<Configure>", lambda event: self._draw_corrected_frame(),
+        )
+        self.correction_note = tk.Label(
+            card, text="", bg="#FFFFFF", fg="#047857",
+            font=(FONT_FAMILY, 9, "bold"), anchor="w",
+        )
+
+    def _draw_corrected_frame(self):
+        bits = getattr(self, "_corrected_bits", "")
+        fixed = getattr(self, "_corrected_fixed", set())
+        check = set(self.current.get("check_indices") or ()) if self.current else set()
+        self._draw_bits(
+            self.corrected_canvas, bits or "",
+            check_indices=check, fixed=fixed, accent="#059669",
+        )
+
+    def _show_corrected_frame(self, reveal=False):
+        bits = getattr(self, "_demo_corrected_frame", None)
+        if not bits:
+            self._hide_corrected_frame()
+            return
+        self._corrected_bits = bits
+        error_index = getattr(self, "_demo_error_index", None)
+        self._corrected_fixed = (
+            {error_index} if reveal and error_index is not None else set()
+        )
+        if not self.corrected_row.winfo_ismapped():
+            self.corrected_row.pack(fill="x", padx=14, pady=(0, 3))
+        self._draw_corrected_frame()
+        note = getattr(self, "correction_note", None)
+        if note is not None:
+            if error_index is not None:
+                before = self.received_bits[error_index]
+                after = bits[error_index]
+                text = (
+                    f"错误定位：第 {error_index + 1} 位（{before} → {after}）"
+                    + ("，已纠正" if reveal else "，等待纠错")
+                )
+            else:
+                text = "候选位不唯一，已请求重传，重传帧与原发送帧一致"
+            note.configure(text=text)
+            if not note.winfo_ismapped():
+                note.pack(fill="x", padx=14, pady=(0, 6))
+
+    def _hide_corrected_frame(self):
+        self._corrected_bits = ""
+        self._corrected_fixed = set()
+        row = getattr(self, "corrected_row", None)
+        if row is not None:
+            row.pack_forget()
+        note = getattr(self, "correction_note", None)
+        if note is not None:
+            note.pack_forget()
+
     def _build_analysis_area(self):
         section = tk.Frame(self, bg=COLOR_BACKGROUND)
-        section.pack(fill="both", expand=True, padx=24, pady=(14, 20))
+        section.pack(fill="both", expand=True, padx=24, pady=(8, 10))
         section.rowconfigure(0, weight=1)
         section.columnconfigure(0, weight=3)
         section.columnconfigure(1, weight=2)
@@ -241,6 +307,7 @@ class ChecksumView(tk.Frame):
 
         cards = tk.Frame(process, bg=COLOR_BACKGROUND)
         cards.pack(fill="both", expand=True)
+        self.step_cards = []
         colors = ("#6366F1", COLOR_PRIMARY, "#0891B2", COLOR_PASS)
         for index in range(4):
             row, column = divmod(index, 2)
@@ -258,7 +325,7 @@ class ChecksumView(tk.Frame):
             tk.Frame(card, bg=colors[index], height=3).pack(fill="x")
 
             card_header = tk.Frame(card, bg="#FFFFFF")
-            card_header.pack(fill="x", padx=12, pady=(8, 5))
+            card_header.pack(fill="x", padx=12, pady=(6, 3))
             number = tk.Canvas(
                 card_header, width=25, height=25, bg="#FFFFFF",
                 highlightthickness=0, bd=0,
@@ -279,7 +346,7 @@ class ChecksumView(tk.Frame):
                 card, text="—", bg="#F8FAFC", fg=colors[index],
                 font=("Consolas", 11, "bold"), anchor="w", padx=8, pady=3,
             )
-            value.pack(fill="x", padx=12, pady=(0, 5))
+            value.pack(fill="x", padx=12, pady=(0, 3))
             description = tk.Label(
                 card,
                 text="生成发送帧后显示当前步骤。",
@@ -291,13 +358,14 @@ class ChecksumView(tk.Frame):
                 width=1,
                 wraplength=190,
             )
-            description.pack(fill="both", expand=True, padx=12, pady=(0, 8))
+            description.pack(fill="both", expand=True, padx=12, pady=(0, 6))
             card.bind(
                 "<Configure>",
                 lambda event, label=description: label.configure(
                     wraplength=max(event.width - 24, 100),
                 ),
             )
+            self.step_cards.append(card)
             self.step_title_labels.append(title)
             self.step_value_labels.append(value)
             self.step_description_labels.append(description)
@@ -323,7 +391,7 @@ class ChecksumView(tk.Frame):
         status_row = tk.Frame(receiver, bg="#FFFFFF")
         status_row.pack(fill="x", padx=16)
         self.receiver_icon = tk.Canvas(
-            status_row, width=48, height=48, bg="#FFFFFF",
+            status_row, width=40, height=40, bg="#FFFFFF",
             highlightthickness=0, bd=0,
         )
         self.receiver_icon.pack(side="left")
@@ -331,7 +399,7 @@ class ChecksumView(tk.Frame):
         status_text.pack(side="left", padx=(10, 0))
         self.receiver_status = tk.Label(
             status_text, text="等待发送帧", bg="#FFFFFF", fg="#64748B",
-            font=(FONT_FAMILY, 15, "bold"),
+            font=(FONT_FAMILY, 14, "bold"),
         )
         self.receiver_status.pack(anchor="w")
         self.receiver_state = tk.Label(
@@ -351,10 +419,10 @@ class ChecksumView(tk.Frame):
             anchor="nw",
             wraplength=260,
         )
-        self.receiver_detail.pack(fill="x", padx=16, pady=(6, 5))
+        self.receiver_detail.pack(fill="x", padx=16, pady=(4, 3))
 
         metrics = tk.Frame(receiver, bg="#FFFFFF")
-        metrics.pack(fill="x", padx=16, pady=(0, 6))
+        metrics.pack(fill="x", padx=16, pady=(0, 4))
         self.receiver_metric_values = []
         for column, title_text in enumerate(("接收帧长", "反转位数")):
             metric = tk.Frame(
@@ -420,7 +488,7 @@ class ChecksumView(tk.Frame):
         canvas = self.hero
         canvas.delete("all")
         width = max(canvas.winfo_width(), 640)
-        height = max(canvas.winfo_height(), 132)
+        height = max(canvas.winfo_height(), 122)
         for y in range(height):
             color = _mix_colors("#164E63", "#0891B2", y / height)
             canvas.create_line(0, y, width, y, fill=color)
@@ -723,7 +791,28 @@ class ChecksumView(tk.Frame):
             )]
         self._render_steps(encode_steps + [outcome["step"]])
         self.step_value_labels[3].configure(fg=color)
+
+        # 记录纠错/重传信息，供逐步演示使用
+        self._demo_corrected_frame = None
+        self._demo_error_index = None
+        self._demo_retransmitted = False
+        corrected_frame = outcome.get("corrected_frame")
+        if corrected_frame and len(corrected_frame) == len(self.received_bits):
+            self._demo_corrected_frame = corrected_frame
+            for position, (before, after) in enumerate(
+                zip(self.received_bits, corrected_frame)
+            ):
+                if before != after:
+                    self._demo_error_index = position
+                    break
+            self._demo_retransmitted = self._demo_error_index is None
+        elif outcome.get("retransmitted"):
+            self._demo_retransmitted = True
+            self._demo_corrected_frame = self.current["frame"]
+
         self._setup_demo(encode_steps + [outcome["step"]])
+        if self._demo_corrected_frame:
+            self._show_corrected_frame()
 
     def _check_parity(self):
         mode = self.current["mode"]
@@ -906,8 +995,15 @@ class ChecksumView(tk.Frame):
 
     def _build_demo_player(self):
         self._demo_steps = []
+        self.step_cards = []
+        self._demo_focus = set()
+        self._demo_corrected_frame = None
+        self._demo_error_index = None
+        self._demo_retransmitted = False
+        self._corrected_bits = ""
+        self._corrected_fixed = set()
         self.demo_player = StepPlayer(self, interval=900)
-        self.demo_player.pack(fill="x", padx=24, pady=(0, 14))
+        self.demo_player.pack(fill="x", padx=24, pady=(0, 10))
 
     def _setup_demo(self, steps):
         """重新装载四步计算过程，并清空卡片等待逐步展示。"""
@@ -916,20 +1012,89 @@ class ChecksumView(tk.Frame):
             f"{index + 1}. {step[0]}"
             for index, step in enumerate(self._demo_steps)
         ]
+        corrected = getattr(self, "_demo_corrected_frame", None)
+        error_index = getattr(self, "_demo_error_index", None)
+        if corrected:
+            start = len(self._demo_steps)
+            if error_index is not None:
+                titles.append(
+                    f"{start + 1}. 定位错误位：第 {error_index + 1} 位"
+                )
+                titles.append(
+                    f"{start + 2}. 纠错：第 {error_index + 1} 位取反，生成纠错后帧"
+                )
+                titles.append(f"{start + 3}. 从纠错后帧恢复原始数据")
+            else:
+                titles.append(f"{start + 1}. 候选位不唯一，无法纠错")
+                titles.append(f"{start + 2}. 请求重传，收到重传帧")
+                titles.append(f"{start + 3}. 从重传帧恢复原始数据")
         self.demo_player.load(titles, self._apply_checksum_step)
 
     def _apply_checksum_step(self, index):
-        if not self._demo_steps:
+        total = len(self._demo_steps)
+        if not total:
             self._render_steps([])
+            self._highlight_step_cards(-1)
+            self._demo_focus = set()
+            self._hide_corrected_frame()
+            self._draw_frames()
             return
-        visible = 0 if index < 0 else min(index + 1, len(self._demo_steps))
+        visible = 0 if index < 0 else min(index + 1, total)
         self._render_steps(self._demo_steps[:visible])
+        self._highlight_step_cards(min(index, total - 1) if index >= 0 else -1)
+        error_index = getattr(self, "_demo_error_index", None)
+        if index < total:
+            self._demo_focus = self._step_focus(index)
+        elif index == total:
+            self._demo_focus = (
+                {error_index} if error_index is not None else set()
+            )
+        else:
+            self._demo_focus = set()
+        if getattr(self, "_demo_corrected_frame", None):
+            self._show_corrected_frame(reveal=index >= total + 1)
+        else:
+            self._hide_corrected_frame()
+        self._draw_frames()
+
+    def _highlight_step_cards(self, index):
+        for position, card in enumerate(getattr(self, "step_cards", [])):
+            if position == index:
+                card.configure(
+                    highlightbackground="#2563EB", highlightthickness=2,
+                )
+            elif 0 <= position < index:
+                card.configure(
+                    highlightbackground="#93C5FD", highlightthickness=1,
+                )
+            else:
+                card.configure(
+                    highlightbackground="#D5DDE9", highlightthickness=1,
+                )
+
+    def _step_focus(self, index):
+        """按当前步骤给出需要高亮的帧位集合。"""
+        if index < 0 or not self.current:
+            return set()
+        frame = self.current.get("frame") or ""
+        total = len(frame)
+        check = set(self.current.get("check_indices") or ())
+        data_positions = set(range(total)) - check
+        if index == 0:
+            return data_positions
+        if index == 1:
+            return check or set(range(total))
+        if index == 2:
+            return set(range(total))
+        return set(self.flipped_positions) or check
 
     def _draw_frames(self):
         frame = self.current["frame"] if self.current else ""
         check_indices = self.current["check_indices"] if self.current else set()
+        focus = getattr(self, "_demo_focus", set())
         self._draw_bits(
             self.sent_canvas, frame, check_indices=check_indices,
+            focus=focus,
         )
         self._draw_bits(
             self.received_canvas,
@@ -937,6 +1102,7 @@ class ChecksumView(tk.Frame):
             check_indices=check_indices,
             flipped=self.flipped_positions,
             interactive=True,
+            focus=focus,
         )
 
     def _draw_receiver_data(self):
@@ -959,6 +1125,7 @@ class ChecksumView(tk.Frame):
     def _draw_bits(
         self, canvas, bits, check_indices=None, flipped=None,
         interactive=False, accent=COLOR_PRIMARY, show_positions=True,
+        focus=None, fixed=None,
     ):
         canvas.delete("all")
         if not bits:
@@ -970,6 +1137,8 @@ class ChecksumView(tk.Frame):
 
         check_indices = check_indices or set()
         flipped = flipped or set()
+        focus = focus or set()
+        fixed = fixed or set()
         width = max(canvas.winfo_width(), 220)
         count = len(bits)
         gap = 3 if count <= 32 else 1
@@ -984,10 +1153,16 @@ class ChecksumView(tk.Frame):
             x1 = start_x + index * (cell_width + gap)
             x2 = x1 + cell_width
             selected = index in flipped
+            corrected_bit = index in fixed
             check = index in check_indices
-            background = COLOR_ERROR if selected else ("#E0E7FF" if check else "#FFFFFF")
-            border = COLOR_ERROR if selected else (accent if check else "#CBD5E1")
-            foreground = "#FFFFFF" if selected else (accent if check else "#334155")
+            if corrected_bit:
+                background, border, foreground = "#059669", "#047857", "#FFFFFF"
+            elif selected:
+                background, border, foreground = COLOR_ERROR, COLOR_ERROR, "#FFFFFF"
+            elif check:
+                background, border, foreground = "#E0E7FF", accent, accent
+            else:
+                background, border, foreground = "#FFFFFF", "#CBD5E1", "#334155"
             tag = f"bit_{index}"
             _rounded_rectangle(
                 canvas, x1, 2, x2, 2 + box_height, 4,
@@ -997,6 +1172,11 @@ class ChecksumView(tk.Frame):
                 (x1 + x2) / 2, 2 + box_height / 2, text=bit,
                 fill=foreground, font=("Consolas", bit_font_size, "bold"), tags=(tag,),
             )
+            if index in focus:
+                _rounded_rectangle(
+                    canvas, x1 - 2, 0, x2 + 2, 4 + box_height, 6,
+                    fill="", outline="#0EA5E9", width=2, tags=(tag,),
+                )
             if show_positions:
                 canvas.create_text(
                     (x1 + x2) / 2, 38, text=str(index + 1),

@@ -738,6 +738,7 @@ class EncodingView(tk.Frame):
         """根据输入内容装载逐步演示步骤。"""
         if decimal_response is not None and decimal_response["ok"]:
             rows = decimal_response["result"]["rows"]
+            binary = decimal_response["result"]["binary"]
             titles = [
                 (
                     f"第 {index + 1} 行：{row['dividend']} ÷ 2 = "
@@ -745,10 +746,11 @@ class EncodingView(tk.Frame):
                 )
                 for index, row in enumerate(rows)
             ]
-            titles.append(
-                f"从下往上读余数，得到二进制 "
-                f"{decimal_response['result']['binary']}"
-            )
+            for position, digit in enumerate(binary):
+                titles.append(
+                    f"从下往上取第 {position + 1} 个余数：{digit}"
+                )
+            titles.append(f"拼接完成，二进制为 {binary}")
             self.demo_player.load(titles, self._apply_decimal_step)
             return
         titles = [
@@ -761,23 +763,43 @@ class EncodingView(tk.Frame):
     def _apply_decimal_step(self, index):
         rows = getattr(self, "_decimal_rows", [])
         total = len(rows)
+        binary = getattr(self, "_decimal_binary", "")
         visible = 0 if index < 0 else min(index + 1, total)
+        current = visible - 1
         for position, row_label in enumerate(rows):
             if position < visible:
                 row_label.pack(anchor="w")
-                row_label.configure(
-                    bg="#EEF2FF" if position == visible - 1 else "#FFFFFF",
-                )
+                if position == current and index < total:
+                    row_label.configure(
+                        bg="#DBEAFE", fg="#1D4ED8",
+                        font=("Consolas", 9, "bold"),
+                    )
+                elif position < current:
+                    row_label.configure(
+                        bg="#FFFFFF", fg="#94A3B8",
+                        font=("Consolas", 9),
+                    )
+                else:
+                    row_label.configure(
+                        bg="#FFFFFF", fg="#475569",
+                        font=("Consolas", 9),
+                    )
             else:
                 row_label.pack_forget()
+        bits_shown = 0 if index < total else min(index + 1 - total, len(binary))
         result_label = getattr(self, "_decimal_result_label", None)
         if result_label is not None:
-            if visible >= total and total:
+            if bits_shown <= 0:
+                result_label.configure(text="从下往上 → ?", fg="#94A3B8")
+            elif bits_shown < len(binary):
                 result_label.configure(
-                    text=f"从下往上 → {self._decimal_binary}",
+                    text="从下往上 → " + " ".join(binary[:bits_shown]) + " …",
+                    fg=COLOR_PRIMARY,
                 )
             else:
-                result_label.configure(text="从下往上 → ?")
+                result_label.configure(
+                    text=f"从下往上 → {binary}", fg="#059669",
+                )
 
     def _apply_character_step(self, index):
         total = len(self.character_cards)
