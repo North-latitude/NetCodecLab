@@ -1,4 +1,10 @@
-"""编码工坊算法：逐字符编码与整段文本位流转换。"""
+"""字符编码拆解：文本 -> 码点 -> UTF-8 / GBK 字节 -> 二进制位流。
+
+对应编码工坊页面。UTF-8 与 GBK 是变长编码，同一个汉字在 UTF-8 占 3 字节、
+GBK 占 2 字节，因此必须**逐字符**编码，不能整串编码后再按字节切。
+
+本模块是纯函数，不依赖 Tkinter；返回 ``{ok, result, steps, message}``。
+"""
 
 from __future__ import annotations
 
@@ -25,38 +31,45 @@ def _bytes_block(raw: bytes | None) -> dict:
 
 
 def encode_text(text: str, primary: str = config.DEFAULT_ENCODING) -> dict:
-    """逐字符拆解一段文本的码点、UTF-8 / GBK 字节与位流。"""
+    """逐字符拆解一段文本的码点、UTF-8 / GBK 字节与位流。
+
+    参数
+    ----
+    text: 用户输入的原始文本。
+    primary: 主显示字符集（默认 UTF-8），只影响 message 里的口径，
+             UTF-8 和 GBK 两组字节都会同时给出。
+
+    返回
+    ----
+    {ok, result: {chars, total_utf8_bytes, total_gbk_bytes, total_utf8_bits,
+                  total_gbk_bits, primary}, steps, message}
+    ``chars`` 每项含 char、code_point、code_point_hex、utf8、gbk 两个字段块。
+    某个字符 GBK 编不了时，gbk 块为 None 字段并在 steps / message 说明，
+    其余字符照常处理，不会整页崩溃。
+    """
     if not isinstance(text, str):
         return {"ok": False, "result": None, "steps": [], "message": "输入必须是文本字符串"}
     if not text:
         return {"ok": False, "result": None, "steps": [], "message": "输入为空，请先输入要编码的文本"}
     if len(text) > config.MAX_INPUT_CHARS:
-        return {
-            "ok": False,
-            "result": None,
-            "steps": [],
-            "message": f"输入超过上限 {config.MAX_INPUT_CHARS} 个字符，当前 {len(text)} 个，请删减后再试",
-        }
+        return {"ok": False, "result": None, "steps": [],
+                "message": f"输入超过上限 {config.MAX_INPUT_CHARS} 个字符，"
+                           f"当前 {len(text)} 个，请删减后再试"}
     if primary not in SUPPORTED_ENCODINGS:
-        return {
-            "ok": False,
-            "result": None,
-            "steps": [],
-            "message": f"字符集只能是 {' / '.join(SUPPORTED_ENCODINGS)}，收到 {primary!r}",
-        }
+        return {"ok": False, "result": None, "steps": [],
+                "message": f"字符集只能是 {' / '.join(SUPPORTED_ENCODINGS)}，收到 {primary!r}"}
 
     chars: list[dict] = []
     total_utf8 = 0
     total_gbk = 0
     gbk_failed: list[str] = []
-    steps = [_step(
-        "逐字符编码",
-        f"共 {len(text)} 个字符；UTF-8、GBK 分别逐字符编码后再拼位流",
-    )]
+    steps = [_step("逐字符编码",
+                   f"共 {len(text)} 个字符；UTF-8、GBK 分别逐字符编码后再拼位流")]
 
     for index, char in enumerate(text, start=1):
         code = ord(char)
         code_hex = f"U+{code:04X}"
+
         try:
             utf8_raw = char.encode("utf-8")
         except UnicodeEncodeError:
@@ -71,6 +84,7 @@ def encode_text(text: str, primary: str = config.DEFAULT_ENCODING) -> dict:
         gbk_block = _bytes_block(gbk_raw)
         total_utf8 += utf8_block["byte_count"]
         total_gbk += gbk_block["byte_count"]
+
         chars.append({
             "index": index,
             "char": char,
@@ -89,15 +103,15 @@ def encode_text(text: str, primary: str = config.DEFAULT_ENCODING) -> dict:
 
     utf8_bits = total_utf8 * 8
     gbk_bits = total_gbk * 8
+
     if gbk_failed:
         note = "；以下字符 GBK 无法表示：" + "、".join(gbk_failed)
     else:
         note = ""
-    steps.append(_step(
-        "汇总",
-        f"UTF-8 共 {total_utf8} 字节 {utf8_bits} 位；"
-        f"GBK 共 {total_gbk} 字节 {gbk_bits} 位" + note,
-    ))
+    steps.append(_step("汇总",
+                       f"UTF-8 共 {total_utf8} 字节 {utf8_bits} 位；"
+                       f"GBK 共 {total_gbk} 字节 {gbk_bits} 位" + note))
+
     return {
         "ok": True,
         "result": {
@@ -110,51 +124,35 @@ def encode_text(text: str, primary: str = config.DEFAULT_ENCODING) -> dict:
             "gbk_failed_chars": gbk_failed,
         },
         "steps": steps,
-        "message": (
-            f"{len(text)} 个字符：UTF-8 {total_utf8} 字节 / {utf8_bits} 位，"
-            f"GBK {total_gbk} 字节 / {gbk_bits} 位" + note
-        ),
+        "message": f"{len(text)} 个字符：UTF-8 {total_utf8} 字节 / {utf8_bits} 位，"
+                   f"GBK {total_gbk} 字节 / {gbk_bits} 位" + note,
     }
 
 
 def text_to_bitstream(text: str, encoding: str = config.DEFAULT_ENCODING) -> dict:
-    """便捷函数：整段文本按指定字符集拼成一条位流（编码工坊主视图用）。"""
+    """便捷函数：整段文本按指定字符集拼成一条位流（编码工坊主视图用）。
+
+    返回 {ok, result: {bytes, hex, bits, byte_count, encoding}, steps, message}。
+    """
     if encoding not in SUPPORTED_ENCODINGS:
-        return {
-            "ok": False,
-            "result": None,
-            "steps": [],
-            "message": f"字符集只能是 {' / '.join(SUPPORTED_ENCODINGS)}，收到 {encoding!r}",
-        }
+        return {"ok": False, "result": None, "steps": [],
+                "message": f"字符集只能是 {' / '.join(SUPPORTED_ENCODINGS)}，收到 {encoding!r}"}
     if not text:
         return {"ok": False, "result": None, "steps": [], "message": "输入为空"}
     if len(text) > config.MAX_INPUT_CHARS:
-        return {
-            "ok": False,
-            "result": None,
-            "steps": [],
-            "message": f"输入超过上限 {config.MAX_INPUT_CHARS} 个字符",
-        }
+        return {"ok": False, "result": None, "steps": [],
+                "message": f"输入超过上限 {config.MAX_INPUT_CHARS} 个字符"}
     try:
         raw = text.encode(encoding)
     except UnicodeEncodeError as exc:
-        return {
-            "ok": False,
-            "result": None,
-            "steps": [],
-            "message": f"当前字符集 {encoding} 无法编码部分内容：{exc}",
-        }
+        return {"ok": False, "result": None, "steps": [],
+                "message": f"当前字符集 {encoding} 无法编码部分内容：{exc}"}
 
     bits = bytes_to_bitstr(raw)
     return {
         "ok": True,
-        "result": {
-            "bytes": list(raw),
-            "hex": bytes_to_hex(raw),
-            "bits": bits,
-            "byte_count": len(raw),
-            "encoding": encoding,
-        },
+        "result": {"bytes": list(raw), "hex": bytes_to_hex(raw), "bits": bits,
+                   "byte_count": len(raw), "encoding": encoding},
         "steps": [
             _step("按字符集编码", f"文本按 {encoding} 编码成 {len(raw)} 字节"),
             _step("拼成位流", f"每个字节补满 8 位，共 {len(bits)} 位：{bits}"),
