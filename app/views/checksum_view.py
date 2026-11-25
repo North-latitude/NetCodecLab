@@ -13,6 +13,7 @@ if __name__ == "__main__":
     if str(PROJECT_ROOT) not in sys.path:
         sys.path.insert(0, str(PROJECT_ROOT))
 
+from app.common.widgets import StepPlayer
 from app.core import checksum, crc, hamming, matrix, parity
 from app.common.theme import (
     COLOR_BACKGROUND,
@@ -90,6 +91,7 @@ class ChecksumView(tk.Frame):
 
         self._build_hero()
         self._build_input_area()
+        self._build_demo_player()
         self._build_frame_area()
         self._build_analysis_area()
         self.generate_frame()
@@ -721,6 +723,7 @@ class ChecksumView(tk.Frame):
             )]
         self._render_steps(encode_steps + [outcome["step"]])
         self.step_value_labels[3].configure(fg=color)
+        self._setup_demo(encode_steps + [outcome["step"]])
 
     def _check_parity(self):
         mode = self.current["mode"]
@@ -901,6 +904,27 @@ class ChecksumView(tk.Frame):
             ),
         }
 
+    def _build_demo_player(self):
+        self._demo_steps = []
+        self.demo_player = StepPlayer(self, interval=900)
+        self.demo_player.pack(fill="x", padx=24, pady=(0, 14))
+
+    def _setup_demo(self, steps):
+        """重新装载四步计算过程，并清空卡片等待逐步展示。"""
+        self._demo_steps = [tuple(step) for step in steps]
+        titles = [
+            f"{index + 1}. {step[0]}"
+            for index, step in enumerate(self._demo_steps)
+        ]
+        self.demo_player.load(titles, self._apply_checksum_step)
+
+    def _apply_checksum_step(self, index):
+        if not self._demo_steps:
+            self._render_steps([])
+            return
+        visible = 0 if index < 0 else min(index + 1, len(self._demo_steps))
+        self._render_steps(self._demo_steps[:visible])
+
     def _draw_frames(self):
         frame = self.current["frame"] if self.current else ""
         check_indices = self.current["check_indices"] if self.current else set()
@@ -1028,6 +1052,9 @@ class ChecksumView(tk.Frame):
         self.receiver_detail.configure(text="请输入有效数据。")
         self.receiver_extra.configure(text="")
         self._render_steps([])
+        self._demo_steps = []
+        if hasattr(self, "demo_player"):
+            self.demo_player.load([])
 
     @staticmethod
     def _toggle_bit(bits, index):
