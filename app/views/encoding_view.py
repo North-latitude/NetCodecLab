@@ -1,4 +1,4 @@
-"""编码工坊页面。"""
+﻿"""编码工坊页面。"""
 
 import sys
 import tkinter as tk
@@ -11,6 +11,7 @@ if __name__ == "__main__":
     if str(PROJECT_ROOT) not in sys.path:
         sys.path.insert(0, str(PROJECT_ROOT))
 
+from app.common.widgets import StepPlayer
 from app.core import (
     base_to_dec,
     dec_to_base,
@@ -66,6 +67,7 @@ class EncodingView(tk.Frame):
 
         self._build_hero()
         self._build_input_area()
+        self._build_demo_player()
         self._build_result_area()
         self._build_steps_area()
         self.parse_input()
@@ -304,19 +306,27 @@ class EncodingView(tk.Frame):
             font=(FONT_FAMILY, 11, "bold"),
         ).pack(anchor="w", padx=10, pady=(3, 0))
 
-        body = "\n".join(
-            f"{item['dividend']:>4} ÷ 2 = {item['quotient']:>4} 余 {item['remainder']}"
-            for item in result["rows"]
-        )
-        tk.Label(
-            card, text=body, bg="#FFFFFF", fg="#475569",
-            font=("Consolas", 9), justify="left", anchor="w",
-        ).pack(fill="x", padx=10, pady=(3, 2))
+        rows_box = tk.Frame(card, bg="#FFFFFF")
+        rows_box.pack(fill="x", padx=10, pady=(2, 0))
+        self._decimal_rows = []
+        for item in result["rows"]:
+            row_label = tk.Label(
+                rows_box,
+                text=(
+                    f"{item['dividend']:>4} ÷ 2 = {item['quotient']:>4} "
+                    f"余 {item['remainder']}"
+                ),
+                bg="#FFFFFF", fg="#475569",
+                font=("Consolas", 9), anchor="w", justify="left",
+            )
+            self._decimal_rows.append(row_label)
 
-        tk.Label(
-            card, text=f"从下往上 → {result['binary']}", bg="#FFFFFF",
-            fg=COLOR_PRIMARY, font=("Consolas", 11, "bold"),
-        ).pack(anchor="w", padx=10)
+        self._decimal_binary = result["binary"]
+        self._decimal_result_label = tk.Label(
+            card, text="从下往上 → ?", bg="#FFFFFF",
+            fg=COLOR_PRIMARY, font=("Consolas", 10, "bold"),
+        )
+        self._decimal_result_label.pack(anchor="w", padx=10, pady=(2, 0))
 
     def _create_character_card(self, index, record):
         card = tk.Frame(
@@ -682,6 +692,7 @@ class EncodingView(tk.Frame):
         if not response["ok"]:
             self.status_label.configure(text=response["message"], fg=COLOR_ERROR)
             self._clear_details()
+            self.demo_player.load([])
             return
 
         bitstream = text_to_bitstream(text, primary)
@@ -723,6 +734,93 @@ class EncodingView(tk.Frame):
                 status += f" · {decimal_response['message']}"
         self.status_label.configure(text=status, fg=color)
         self._select_character(0)
+        self._load_demo(decimal_response)
+
+    def _build_demo_player(self):
+        self.demo_player = StepPlayer(self, interval=800)
+        self.demo_player.pack(fill="x", padx=24, pady=(0, 16))
+
+    def _load_demo(self, decimal_response):
+        """根据输入内容装载逐步演示步骤。"""
+        if decimal_response is not None and decimal_response["ok"]:
+            rows = decimal_response["result"]["rows"]
+            binary = decimal_response["result"]["binary"]
+            titles = [
+                (
+                    f"第 {index + 1} 行：{row['dividend']} ÷ 2 = "
+                    f"{row['quotient']}，余 {row['remainder']}"
+                )
+                for index, row in enumerate(rows)
+            ]
+            for position, digit in enumerate(binary):
+                titles.append(
+                    f"从下往上取第 {position + 1} 个余数：{digit}"
+                )
+            titles.append(f"拼接完成，二进制为 {binary}")
+            self.demo_player.load(titles, self._apply_decimal_step)
+            return
+        titles = [
+            f"字符 {index + 1}：{record['char']}"
+            for index, record in enumerate(self._records)
+        ]
+        titles.append("右侧查看该字符的完整编码详情")
+        self.demo_player.load(titles, self._apply_character_step)
+
+    def _apply_decimal_step(self, index):
+        rows = getattr(self, "_decimal_rows", [])
+        total = len(rows)
+        binary = getattr(self, "_decimal_binary", "")
+        visible = 0 if index < 0 else min(index + 1, total)
+        current = visible - 1
+        for position, row_label in enumerate(rows):
+            if position < visible:
+                row_label.pack(anchor="w")
+                if position == current and index < total:
+                    row_label.configure(
+                        bg="#DBEAFE", fg="#1D4ED8",
+                        font=("Consolas", 9, "bold"),
+                    )
+                elif position < current:
+                    row_label.configure(
+                        bg="#FFFFFF", fg="#94A3B8",
+                        font=("Consolas", 9),
+                    )
+                else:
+                    row_label.configure(
+                        bg="#FFFFFF", fg="#475569",
+                        font=("Consolas", 9),
+                    )
+            else:
+                row_label.pack_forget()
+        bits_shown = 0 if index < total else min(index + 1 - total, len(binary))
+        result_label = getattr(self, "_decimal_result_label", None)
+        if result_label is not None:
+            if bits_shown <= 0:
+                result_label.configure(text="从下往上 → ?", fg="#94A3B8")
+            elif bits_shown < len(binary):
+                result_label.configure(
+                    text="从下往上 → " + " ".join(binary[:bits_shown]) + " …",
+                    fg=COLOR_PRIMARY,
+                )
+            else:
+                result_label.configure(
+                    text=f"从下往上 → {binary}", fg="#059669",
+                )
+
+    def _apply_character_step(self, index):
+        total = len(self.character_cards)
+        visible = 0 if index < 0 else min(index + 1, total)
+        for position, widgets in enumerate(self.character_cards):
+            card = widgets["card"]
+            if position < visible:
+                if not card.winfo_ismapped():
+                    card.pack(
+                        side="left", fill="y",
+                        padx=(8 if position == 0 else 4, 4), pady=8,
+                    )
+            else:
+                card.pack_forget()
+
 
     def _open_base_convert_dialog(self):
         """进制换算窗口：2 / 8 / 10 / 16 任意互转，两种算法都画竖式。
@@ -940,6 +1038,7 @@ class EncodingView(tk.Frame):
         x = self.winfo_toplevel().winfo_rootx() + 90
         y = self.winfo_toplevel().winfo_rooty() + 70
         dialog.geometry(f"+{max(x, 0)}+{max(y, 0)}")
+
 
     def _selected_encoding_key(self):
         return "utf8" if self.charset_var.get() == "UTF-8" else "gbk"

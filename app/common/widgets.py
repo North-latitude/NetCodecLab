@@ -157,4 +157,163 @@ class StepTable(tk.Frame):
             description_label.configure(wraplength=description_width)
 
 
-__all__ = ["BitStrip", "StepTable"]
+class StepPlayer(tk.Frame):
+    """逐步演示控制条：上一步、下一步、自动播放与重置。"""
+
+    def __init__(self, master, on_step=None, interval=900, **kwargs):
+        kwargs.setdefault("bg", "#FFFFFF")
+        kwargs.setdefault("highlightbackground", "#D5DDE9")
+        kwargs.setdefault("highlightthickness", 1)
+        super().__init__(master, **kwargs)
+
+        self._on_step = on_step
+        self._interval = interval
+        self._titles = []
+        self._index = -1
+        self._job = None
+
+        self.columnconfigure(1, weight=1)
+
+        tk.Label(
+            self, text="逐步演示", bg=COLOR_PRIMARY, fg="#FFFFFF",
+            font=(FONT_FAMILY, 9, "bold"), padx=10, pady=4,
+        ).grid(row=0, column=0, padx=(10, 10), pady=8)
+
+        self._title = tk.Label(
+            self, text="生成结果后可逐步查看完整过程", bg="#FFFFFF",
+            fg="#64748B", font=(FONT_FAMILY, 10), anchor="w",
+        )
+        self._title.grid(row=0, column=1, sticky="we", padx=(0, 10))
+
+        self._counter = tk.Label(
+            self, text="0 / 0", bg="#FFFFFF", fg="#94A3B8",
+            font=(FONT_FAMILY, 10, "bold"),
+        )
+        self._counter.grid(row=0, column=2, padx=(0, 10))
+
+        self._prev_button = self._make_button(
+            "上一步", self.prev, "#F1F5F9", "#334155",
+        )
+        self._prev_button.grid(row=0, column=3, padx=(0, 6))
+        self._next_button = self._make_button(
+            "下一步", self.next, COLOR_PRIMARY, "#FFFFFF",
+        )
+        self._next_button.grid(row=0, column=4, padx=(0, 6))
+        self._auto_button = self._make_button(
+            "自动播放", self.toggle_auto, "#ECFDF5", "#047857",
+        )
+        self._auto_button.grid(row=0, column=5, padx=(0, 6))
+        self._reset_button = self._make_button(
+            "重置", self.reset, "#FEF2F2", "#B91C1C",
+        )
+        self._reset_button.grid(row=0, column=6, padx=(0, 10))
+
+        self.bind("<Destroy>", self._on_destroy)
+
+    @property
+    def index(self):
+        return self._index
+
+    def _make_button(self, text, command, background, foreground):
+        return tk.Button(
+            self, text=text, command=command, bg=background, fg=foreground,
+            activebackground=background, activeforeground=foreground,
+            font=(FONT_FAMILY, 9, "bold"), relief="flat", bd=0,
+            padx=12, pady=5, cursor="hand2",
+        )
+
+    def load(self, titles, on_step=None):
+        """装载一组步骤标题，可选替换步进回调。"""
+        self._stop_auto()
+        if on_step is not None:
+            self._on_step = on_step
+        self._titles = list(titles)
+        self._index = -1
+        self._notify()
+
+    def next(self):
+        if self._index + 1 >= len(self._titles):
+            self._stop_auto()
+            return
+        self._index += 1
+        self._notify()
+
+    def prev(self):
+        if self._index <= 0:
+            return
+        self._index -= 1
+        self._notify()
+
+    def reset(self):
+        self._stop_auto()
+        self._index = -1
+        self._notify()
+
+    def toggle_auto(self):
+        if self._job is not None:
+            self._stop_auto()
+            return
+        if not self._titles:
+            return
+        if self._index + 1 >= len(self._titles):
+            self._index = -1
+            self._notify()
+        self._auto_button.configure(text="暂停")
+        self._job = self.after(260, self._auto_step)
+
+    def _auto_step(self):
+        self._job = None
+        if self._index + 1 >= len(self._titles):
+            self._stop_auto()
+            return
+        self._index += 1
+        self._notify()
+        if self._index + 1 >= len(self._titles):
+            self._stop_auto()
+        else:
+            self._job = self.after(self._interval, self._auto_step)
+
+    def _stop_auto(self):
+        if self._job is not None:
+            try:
+                self.after_cancel(self._job)
+            except tk.TclError:
+                pass
+            self._job = None
+        try:
+            self._auto_button.configure(text="自动播放")
+        except tk.TclError:
+            pass
+
+    def _notify(self):
+        total = len(self._titles)
+        if self._index < 0:
+            self._counter.configure(text=f"0 / {total}")
+            hint = "点击“下一步”或“自动播放”查看逐步过程"
+            self._title.configure(
+                text=hint if total else "暂无可演示的步骤",
+            )
+        else:
+            self._counter.configure(text=f"{self._index + 1} / {total}")
+            self._title.configure(text=self._titles[self._index])
+        self._prev_button.configure(
+            state="normal" if self._index > 0 else "disabled",
+        )
+        self._next_button.configure(
+            state="normal" if self._index + 1 < total else "disabled",
+        )
+        if self._on_step is not None:
+            self._on_step(self._index)
+
+    def _on_destroy(self, event):
+        if event.widget is not self:
+            return
+        if self._job is not None:
+            try:
+                self.after_cancel(self._job)
+            except tk.TclError:
+                pass
+            self._job = None
+
+
+__all__ = ["BitStrip", "StepTable", "StepPlayer"]

@@ -24,6 +24,7 @@ from app.common.theme import (
 # 演示字号比公共主题大 1 磅，便于课堂投影查看。
 FONT_NORMAL = (FONT_FAMILY, 11)
 FONT_BOLD = (FONT_FAMILY, 11, "bold")
+from app.common.widgets import StepPlayer
 from app.core import batch_experiment, checksum, crc, hamming, matrix, parity
 
 
@@ -81,6 +82,7 @@ class ChannelView(tk.Frame):
 
         self._build_hero()
         self._build_input_area()
+        self._build_demo_player()
         self._build_body()
         self.generate_frames()
 
@@ -492,6 +494,7 @@ class ChannelView(tk.Frame):
             fg=COLOR_PASS,
         )
         self._refresh_all()
+        self._setup_channel_demo()
 
     def _encode_parity(self, data):
         return parity.parity_encode(data, mode=parity.MODE_EVEN)
@@ -559,7 +562,7 @@ class ChannelView(tk.Frame):
             tag = "pass"
             color = COLOR_PASS
         elif corrected:
-            title = "检出并已纠正"
+            title = "检出"
             tag = "corrected"
             color = "#0284C7"
         else:
@@ -628,6 +631,70 @@ class ChannelView(tk.Frame):
         self._refresh_verdict()
         self._refresh_steps()
         self._refresh_table()
+        if hasattr(self, "demo_player"):
+            self._apply_channel_step(
+                self.demo_player.index, sync_selection=False,
+            )
+
+    def _build_demo_player(self):
+        self.demo_player = StepPlayer(self, interval=1000)
+        self.demo_player.pack(fill="x", padx=24, pady=(0, 14))
+
+    def _setup_channel_demo(self):
+        """按“发送 → 逐方案判定 → 汇总”的顺序装载演示步骤。"""
+        if not self.frames:
+            self.demo_player.load([])
+            return
+        titles = ["发送帧已生成，五种方案同时发出"]
+        for key, label in self.SCHEMES:
+            titles.append(f"{label}：{self.outcomes[key]['title']}")
+        titles.append("五种方案对比完成")
+        self.demo_player.load(titles, self._apply_channel_step)
+
+    def _apply_channel_step(self, index, sync_selection=True):
+        if not self.frames:
+            return
+        total = len(self.KEYS)
+        revealed = 0 if index < 0 else min(index, total)
+        self._updating_table = True
+        try:
+            for position, key in enumerate(self.KEYS):
+                if position < revealed:
+                    outcome = self.outcomes[key]
+                    verdict = "通过" if outcome["valid"] else "检出"
+                    correction = (
+                        "已纠正" if outcome["corrected"]
+                        else "—" if outcome["valid"] else "不能"
+                    )
+                    tags = [outcome["tag"]]
+                    if position % 2:
+                        tags.append("odd")
+                    self.table.item(
+                        key,
+                        text=("▶ " if position == revealed - 1 else "   ")
+                        + self.LABELS[key],
+                        values=(
+                            len(self.frames[key]["result"]["frame"]),
+                            verdict,
+                            correction,
+                        ),
+                        tags=tags,
+                    )
+                else:
+                    self.table.item(
+                        key, text="   " + self.LABELS[key],
+                        values=("—", "—", "—"), tags=(),
+                    )
+            if sync_selection and revealed > 0:
+                self.current_key = self.KEYS[revealed - 1]
+                self.table.selection_set(self.current_key)
+                self.table.focus(self.current_key)
+        finally:
+            self._updating_table = False
+        if sync_selection and revealed > 0:
+            self._refresh_channel()
+            self._refresh_verdict()
+            self._refresh_steps()
 
     def _refresh_channel(self):
         frame = self.frames[self.current_key]["result"]["frame"]
@@ -685,7 +752,7 @@ class ChannelView(tk.Frame):
         try:
             for index, key in enumerate(self.KEYS):
                 outcome = self.outcomes[key]
-                verdict = "通过" if outcome["valid"] else "已纠正" if outcome["corrected"] else "检出"
+                verdict = "通过" if outcome["valid"] else "检出"
                 correction = "已纠正" if outcome["corrected"] else "—" if outcome["valid"] else "不能"
                 tags = [outcome["tag"]]
                 if index % 2:

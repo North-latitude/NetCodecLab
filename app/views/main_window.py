@@ -44,7 +44,7 @@ class MainWindow(tk.Tk):
 
         self.title("NetCodecLab · 网络编码可视化实验室")
         self.geometry("1360x880")
-        self.minsize(1200, 800)
+        self.minsize(1200, 860)
         self.configure(bg=COLOR_BACKGROUND)
 
         self.nav_buttons = {}
